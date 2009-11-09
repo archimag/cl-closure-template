@@ -13,12 +13,13 @@
 
 
 (defsystem closure-template
-  :depends-on (#:wiki-parser)
+  :depends-on (#:wiki-parser #:parenscript #:split-sequence)
   :components ((:module "src"
                         :components ((:file "packages")
                                      (:file "expression" :depends-on ("packages"))
                                      (:file "template" :depends-on ("expression"))
-                                     (:file "cl-backend" :depends-on ("template"))))))
+                                     (:file "translate" :depends-on ("template"))
+                                     (:file "common-lisp-backend" :depends-on ("translate"))))))
 
 (defmethod perform ((o test-op) (c (eql (find-system 'closure-template))))
   (operate 'load-op 'closure-template-test)

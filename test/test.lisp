@@ -7,7 +7,7 @@
 
 (defpackage #:closure-template.test
   (:use #:cl #:iter #:lift)
-  (:import-from #:closure-template.parser.expression #:parse-expression)
+  (:import-from #:closure-template.parser #:parse-expression #:parse-template #:parse-single-template)
   (:export #:run-closure-template-tests))
 
 (in-package #:closure-template.test)
@@ -16,7 +16,7 @@
 (deftestsuite closure-template-test () ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; expression parser test
+;; expression parser tests
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftestsuite expression-parser-test (closure-template-test) ())
@@ -46,6 +46,18 @@
   expression-5
   (ensure-same "Hello world"
                (parse-expression "'Hello world'")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; expression parser tests
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftestsuite template-parser-test (closure-template-test) ())
+
+(addtest (template-parser-test)
+  hello-name-template
+  (ensure-same '(CLOSURE-TEMPLATE.PARSER:TEMPLATE ("helloName") "Hello "
+                 (CLOSURE-TEMPLATE.PARSER:PRINT-TAG (:VARIABLE "name")))
+               (parse-single-template "{template helloName}Hello {$name}{/template}")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Run all tests

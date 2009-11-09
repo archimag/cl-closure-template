@@ -7,8 +7,7 @@
 
 (in-package #:closure-template.parser)
 
-;;(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *lexer* nil)
+(defparameter *lexer* nil)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *symbols-category* (make-hash-table)))
@@ -87,6 +86,20 @@
   (:single "\\n"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; namespace tag
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun namespace-post-handler (item)
+  (list 'namespace
+        (string-trim #(#\Space #\Tab) (subseq (second item)
+                                              (length "{namespace")
+                                              (1- (length (second item)))))))
+
+(define-mode namespace (10 :baseonly)
+  (:special "{namespace\\s*[\\w\\.\\-]*\\s*}")
+  (:post-handler namespace-post-handler))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; template tag
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -159,6 +172,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-mode foreach (60 :all)
+  (:allowed :all)
   (:entry "{foreach[^}]*}(?=.*{/foreach})")
   (:exit "{/foreach}"))
 
@@ -187,15 +201,28 @@
 (define-mode css-expr (20 :all)
   (:special "{css[^}]*}"))
 
-
 (wiki-parser:remake-lexer 'toplevel)
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; parse-template
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod wiki-parser:parse ((markup (eql :closure-template.parser)) (obj string))
-  (call-next-method))
-  ;; (call-next-method markup
-  ;;                   (ppcre:regex-replace-all "\\s+"
-  ;;                                            obj
-  ;;                                            " ")))
+  (let* ((res (call-next-method))
+         (namespace (iter (for item in res)
+                          (finding (second item)
+                                   such-that (and (consp item)
+                                                  (eql (car item) 'namespace)))))
+         (templates (iter (for item in res)
+                          (if (and (consp item)
+                                   (eql (car item) 'template))
+                              (collect item)))))
+    (list* 'namespace
+           namespace
+           templates)))
+           
+(defun parse-template (obj)
+  (wiki-parser:parse :closure-template.parser obj))
+
+(defun parse-single-template (obj)
+  (third (parse-template obj)))

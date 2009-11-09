@@ -11,8 +11,28 @@
 
 (defvar *template-output-stream*)
 
+(defvar *template-data*)
+
+
+(defun compile-expression (expr)
+  (flet ((symbol-from-key (key)
+           (or (find-symbol (symbol-name key)
+                            '#:closure-template)
+               (error "Bad keyword ~A" key))))
+  (if (and (consp expr)
+           (symbolp (car expr)))
+      (let ((key (car expr)))
+        (case key
+          (:variable `(getf *template-data* ,(intern (string-upcase (second expr)) :keyword)))
+          (otherwise (cons (symbol-from-key (car expr))
+                           (iter (for item in (cdr expr))
+                                 (collect (compile-expression item)))))))
+      expr)))
+      
+
 (defun write-template-string (str)
   (write-string str *template-output-stream*))
+
 
 (defun cl-compile-item (item)
   (cond
@@ -37,7 +57,11 @@
 
 
 (define-cl-compile closure-template.parser:template (items)
-  (list 'defun
-        (intern (string-upcase (car (car items))))
-        '()
-        (cl-compile-item (cdr (cdr items)))))
+  `(defun ,(intern (string-upcase (car (car items)))) (data)
+     (let ((*template-data* data))
+       (with-output-to-string (*template-output-stream*)
+         ,(cl-compile-item (cdr (cdr items)))))))
+
+(define-cl-compile closure-template.parser:print-tag (items)
+  (list 'write-template-string
+        (compile-expression (car items))))

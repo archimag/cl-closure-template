@@ -35,13 +35,32 @@
     (cons name
           (parse-arguments/impl args))))
 
+(defun make-tag-post-handler (tag)
+  (eval `(lambda (obj)
+     (ppcre:register-groups-bind (expr) (,(format nil "^{(?:~A )?([^}]*)}$" tag) (second obj))
+       (list (car obj)
+             (parse-expression expr))))))
+
 ;;;; closure template syntax
 ;;;; see http://code.google.com/intl/ru/closure/templates/docs/commands.html
 
 (define-mode toplevel (0)
-  (:allowed :baseonly eol))
+  (:allowed :baseonly eol one-line-comment multi-line-comment))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; comment
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-mode one-line-comment (20 :all)
+  (:special "\\n//[^\\n]*(?=\\n)"))
+
+(define-mode multi-line-comment (20 :all)
+  (:entry "/\\*")
+  (:exit "\\*/"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; substition
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-mode space-tag (20 :all)
   (:single "{sp}"))
@@ -64,11 +83,12 @@
 (define-mode right-brace (20 :all)
   (:single "{rb}"))
 
-(define-mode eol (20 :all)
+(define-mode eol (30 :all)
   (:single "\\n"))
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; template tag
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-mode template (10 :baseonly)
   (:allowed :all)
@@ -76,13 +96,17 @@
   (:entry-attribute-parser parse-name-and-arguments)
   (:exit "{/template}"))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; literag tag
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-mode literal (10 :all)
   (:entry "{literal}(?=.*{/literal})")
   (:exit "{/literal}"))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; print
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun print-tag-post-handler (obj)
   (ppcre:register-groups-bind (expr) ("^{(?:print )?([^}]*)}$" (second obj))
@@ -100,31 +124,78 @@
   (:entry-attribute-parser parse-arguments)
   (:exit "{/msg}"))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; if
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-mode elseif (10 :if)
+  (:special "{elseif[^}]*}"))
+
+(define-mode else-expr (10 :if)
+  (:special "{else}"))
+
 (define-mode if-expr (40 :all)
+  (:allowed elseif else-expr)
   (:entry "{if[^}]*}(?=.*{/if})")
   (:exit "{/if}"))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; switch
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-mode case-expr (10 :switch)
+  (:special "{\\s*case[^}]*}"))
+
+(define-mode default-expr (10 :switch)
+  (:special "{\\s*default\\s*}"))
+
 (define-mode switch-expr (50 :all)
+  (:allowed case-expr default-expr)
   (:entry "{switch[^}]*}(?=.*{/switch})")
   (:exit "{/switch}"))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; foreach
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (define-mode foreach (60 :all)
-  (:entry "{foreach}(?=.*{/foreach})")
+  (:entry "{foreach[^}]*}(?=.*{/foreach})")
   (:exit "{/foreach}"))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; for
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (define-mode for-expr (70 :all)
-  (:entry "{for}(?=.*{/for})")
+  (:entry "{for[^}]*}(?=.*{/for})")
   (:exit "{/for}"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; call
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-mode call (80 :all)
   (:allowed :all)
   (:entry "{call\\s*\\w*\\s*}(?=.*{/call})")
   (:exit "{/call}")
-  (:entry-attribute-parser parse-name-and-arguments)
-  )
+  (:entry-attribute-parser parse-name-and-arguments))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; css
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-mode css-expr (20 :all)
-  (:special "{css}"))
+  (:special "{css[^}]*}"))
 
 
 (wiki-parser:remake-lexer 'toplevel)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod wiki-parser:parse ((markup (eql :closure-template.parser)) (obj string))
+  (call-next-method))
+  ;; (call-next-method markup
+  ;;                   (ppcre:regex-replace-all "\\s+"
+  ;;                                            obj
+  ;;                                            " ")))

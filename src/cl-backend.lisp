@@ -7,7 +7,7 @@
 
 (in-package #:closure-template)
 
-(defparameter *cl-compile-map* (make-hash-table))
+;;;(defparameter *cl-compile-map* (make-hash-table))
 
 (defvar *template-output-stream*)
 
@@ -33,35 +33,45 @@
 (defun write-template-string (str)
   (write-string str *template-output-stream*))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; backend
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun cl-compile-item (item)
-  (cond
-    ((and (consp item)
-          (symbolp (car item))) (let ((compile-fun (gethash (car item) *cl-compile-map*)))
-                                  (if compile-fun
-                                      (funcall compile-fun (cdr item))
-                                      (cl-compile-item (cdr item)))))
-    ((consp item) (cons 'progn
-                        (iter (for i in item)
-                              (collect (cl-compile-item i)))))
-    ((symbolp item) (let ((compile-fun (gethash item *cl-compile-map*)))
-                      (if compile-fun
-                          (funcall compile-fun nil))))
-    ((stringp item) (list 'write-template-string item))))
+(defgeneric compile-item (backend item))
 
-(defmacro define-cl-compile (name (items) &body body)
-  `(setf (gethash ',name
-                  *cl-compile-map*)
-         (lambda (,items)
-           ,@body)))
+(defgeneric compile-named-item (backend item args))
 
+(defgeneric compile-print-function (backend))
 
-(define-cl-compile closure-template.parser:template (items)
-  `(defun ,(intern (string-upcase (car (car items)))) (data)
+(defclass backend () ())
+
+(defmethod compile-item (backend (item cons))
+  (if (symbolp (car item))
+      (compile-named-item backend
+                          (car item)
+                          (cdr item))
+      (cons 'prong
+            (iter (for i in item)
+                  (let ((c (compile-item backend
+                                         i)))
+                    (when c
+                      (collect c)))))))
+
+(defmethod compile-item (backend (item symbol))
+  nil)
+
+(defmethod compile-item (backend (item string))
+  (list 'write-template-string
+        item))
+
+(defmethod compile-named-item (backend (item (eql 'closure-template.parser:template)) args)
+  `(defun ,(intern (string-upcase item)) (data)
      (let ((*template-data* data))
        (with-output-to-string (*template-output-stream*)
-         ,(cl-compile-item (cdr (cdr items)))))))
+         ,(compile-item backend
+                        args)))))
 
-(define-cl-compile closure-template.parser:print-tag (items)
+(defmethod compile-named-item (backend (item (eql 'closure-template.parser:print-tag)) args)
   (list 'write-template-string
-        (compile-expression (car items))))
+        (compile-expression args)))
+  

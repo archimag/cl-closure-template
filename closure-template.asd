@@ -13,9 +13,30 @@
 
 
 (defsystem closure-template
-  :depends-on (#:wiki-parser #:yacc)
+  :depends-on (#:wiki-parser)
   :components ((:module "src"
                         :components ((:file "packages")
                                      (:file "expression" :depends-on ("packages"))
-                                     (:file "parser" :depends-on ("expression"))
+                                     (:file "template" :depends-on ("expression"))
                                      (:file "cl-backend" :depends-on ("parser"))))))
+
+(defmethod perform ((o test-op) (c (eql (find-system 'closure-template))))
+  (operate 'load-op 'closure-template-test)
+  (operate 'test-op 'closure-template-test :force t))
+
+
+(defsystem closure-template-test
+  :depends-on (#:closure-template #:lift)
+  :components ((:module "test"
+                        :components ((:file "test")))))
+
+
+(defmethod perform ((o test-op) (c (eql (find-system 'closure-template-test))))
+  (operate 'load-op 'closure-template-test )
+  (let* ((test-results (funcall (intern (symbol-name 'run-closure-template-tests) '#:closure-template.test)))
+         (errors (funcall (intern (symbol-name 'errors) :lift) test-results))
+         (failures (funcall (intern (symbol-name 'failures) :lift) test-results)))
+    (if (or errors failures)
+        (error "test-op failed: ~A"
+               (concatenate 'list errors failures))
+        (print test-results))))

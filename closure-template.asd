@@ -18,7 +18,7 @@
                         :components ((:file "packages")
                                      (:file "expression" :depends-on ("packages"))
                                      (:file "template" :depends-on ("expression"))
-                                     (:file "cl-backend" :depends-on ("parser"))))))
+                                     (:file "cl-backend" :depends-on ("template"))))))
 
 (defmethod perform ((o test-op) (c (eql (find-system 'closure-template))))
   (operate 'load-op 'closure-template-test)

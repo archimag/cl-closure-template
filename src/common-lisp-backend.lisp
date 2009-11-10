@@ -92,10 +92,17 @@
   (let* ((loop-var (intern (string-upcase (second (first (first args))))))
          (*local-variables* (cons loop-var
                                   *local-variables*))
-         (body (translate-item backend
-                               (cdr args))))
-    `(loop for ,loop-var in ,(translate-expression backend (second (first args)))
-        do ,body)))
+         (seq-expr (translate-expression backend (second (first args)))))
+    (if (third args)
+        (let ((seqvar (gensym)))
+          `(let ((,seqvar ,seq-expr))
+             (if ,seqvar
+                 (loop
+                    for ,loop-var in ,seqvar
+                    do ,(translate-item backend
+                                        (second args)))
+                 ,(translate-item backend
+                                 (third args))))))))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:literal)) args)
   `(write-template-string ,(car args)))

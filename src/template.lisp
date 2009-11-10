@@ -183,11 +183,25 @@
               (parse-expr-or-discard list-var))) 
       (discard-parse-element)))
 
+(defun foreach-post-handler (item)
+  (let ((parts (split-sequence:split-sequence 'ifempty
+                                              (cddr item))))
+    (when (> (length parts) 2)
+      (discard-parse-element))
+    (list* (car item)
+           (second item)
+           parts)))
+
+(define-mode ifempty (10)
+  (:single "{ifempty}")
+  (:special))
+
 (define-mode foreach (60 :all)
-  (:allowed :all)
+  (:allowed :all ifempty)
   (:entry "{foreach\\s+[^}]*}(?=.*{/foreach})")
   (:entry-attribute-parser parse-foreach-attributes)
-  (:exit "{/foreach}"))
+  (:exit "{/foreach}")
+  (:post-handler foreach-post-handler))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; for

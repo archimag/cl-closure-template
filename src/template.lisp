@@ -187,10 +187,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun parse-for-attributes (str)
-  (ppcre:register-groups-bind (loop-var expr1 expr2 expr3)
-      ("{for\\s*(\\$\\w+)\\s*in\\s*range\\(\\s*([^}]+)\\s*(?:,\\s*([^}]+)\\s*)(?:,\\s*([^}]+)\\s*)\\)\\s*}" str)
-    (list loop-var expr1 expr2 expr3)))
-    
+  (ppcre:register-groups-bind (loop-var expr)
+      ("{for\\s*(\\$\\w+)\\s*in\\s*(range\\(\\s*[^}]+\\s*(?:,\\s*[^}]+\\s*)?(?:,\\s*[^}]+\\s*)?\\))\\s*}" str)
+    (list loop-var
+          (parse-expression expr))))
 
 (define-mode for-expr (70 :all)
   (:entry "{for\\s*\\$\\w+\\s*in\\s*range\\(\\s*[^}]+\\s*(?:,\\s*[^}]+\\s*)?(?:,\\s*[^}]+\\s*)?\\)\\s*}(?=.*{/for})")

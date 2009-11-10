@@ -97,6 +97,8 @@
     `(loop for ,loop-var in ,(translate-expression backend (second (first args)))
         do ,body)))
 
+(defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:literal)) args)
+  `(write-template-string ,(car args)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

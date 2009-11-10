@@ -60,9 +60,15 @@
 
 (addtest (template-parser-test)
   hello-name-template-1
-  (ensure-same '(CLOSURE-TEMPLATE.PARSER:TEMPLATE ("helloName") "Hello "
-                 (CLOSURE-TEMPLATE.PARSER:PRINT-TAG (:VARIABLE "name")))
+  (ensure-same '(closure-template.parser:template ("helloName") "Hello "
+                 (closure-template.parser:print-tag (:VARIABLE "name")))
                (parse-single-template "{template helloName}Hello {$name}{/template}")))
+
+(addtest (template-parser-test)
+  literal-1
+  (ensure-same '(closure-template.parser:template ("literal-test") 
+                 (closure-template.parser:literal "Test {$x} {foreach $foo in $bar}{$foo}{/foreach}"))
+               (parse-single-template "{template literal-test}{literal}Test {$x} {foreach $foo in $bar}{$foo}{/foreach}{/literal}{/template}")))
 
 (addtest (template-parser-test)
   loop-1

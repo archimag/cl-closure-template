@@ -12,8 +12,8 @@
 (defvar *local-variables* nil)
 
 (defun write-template-string (str)
-  (write-string str *template-output*))
-
+  (when str
+    (format *template-output* "~A" str)))
 
 (defun make-template-package (&optional (name "CLOSURE-TEMPLATE.SHARE") &aux (upname (string-upcase name)))
   (or (find-package upname)
@@ -29,6 +29,20 @@
 
 (defclass common-lisp-backend () ())
 
+(defun translate-variable (expr)
+  (labels ((impl (r-expr)
+             (if (cdr r-expr)
+                 `(getf ,(impl (cdr r-expr))
+                        ,(intern (string-upcase (car r-expr)) :keyword))
+                 (let* ((varname (string-upcase (car r-expr)))
+                        (varkey (intern varname :keyword))
+                        (varsymbol (intern varname)))
+                   (when (not (or (find varsymbol *local-variables*)
+                                  (find varkey *template-variables*)))
+                     (push varkey *template-variables*))
+                   varsymbol))))
+    (impl (reverse (cdr expr)))))
+
 
 (defmethod translate-expression ((backend common-lisp-backend) expr)
   (flet ((symbol-from-key (key)
@@ -39,11 +53,7 @@
            (symbolp (car expr)))
       (let ((key (car expr)))
         (case key
-          (:variable (let ((varkey (intern (string-upcase (second expr)) :keyword)))
-                       (when (not (or (find varkey *local-variables*)
-                                      (find varkey *template-variables*)))
-                         (push varkey *template-variables*))
-                       (intern (string-upcase (second expr)))))
+          (:variable (translate-variable expr))
           (otherwise (cons (symbol-from-key (car expr))
                            (iter (for item in (cdr expr))
                                  (collect (translate-expression backend item)))))))
@@ -70,9 +80,25 @@
          (binds (iter (for var in *template-variables*)
                       (collect (list (find-symbol (symbol-name var) *package*)
                                      `(getf ^data^ ,var))))))
-  `(defun ,(intern (string-upcase (caar args))) (^data^)
-     (let (,@binds)
-       ,body))))
+    (if binds
+        `(defun ,(intern (string-upcase (caar args))) (^data^)
+           (let (,@binds)
+             ,body))
+        `(defun ,(intern (string-upcase (caar args))) (&optional ^data^)
+           (declare (ignore ^data^))
+           ,body))))
+
+(defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:foreach)) args)
+  (let* ((loop-var (intern (string-upcase (second (first (first args))))))
+         (*local-variables* (cons loop-var
+                                  *local-variables*))
+         (body (translate-item backend
+                               (cdr args))))
+    `(loop for ,loop-var in ,(translate-expression backend (second (first args)))
+        do ,body)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defmethod translate-template ((backend (eql :common-lisp-backend)) template)

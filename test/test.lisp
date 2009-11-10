@@ -64,6 +64,12 @@
                  (CLOSURE-TEMPLATE.PARSER:PRINT-TAG (:VARIABLE "name")))
                (parse-single-template "{template helloName}Hello {$name}{/template}")))
 
+(addtest (template-parser-test)
+  loop-1
+  (ensure-same '(closure-template.parser:template ("test")
+                 (closure-template.parser:foreach ((:variable "x") (:variable "y" "foo"))
+                  (closure-template.parser:print-tag (:variable "x"))))
+               (parse-single-template "{template test}{foreach $x in $y.foo }{$x}{/foreach}{/template}")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Run all tests

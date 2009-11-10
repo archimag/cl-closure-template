@@ -171,9 +171,15 @@
 ;;; foreach
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun parse-foreach-attributes (str)
+  (ppcre:register-groups-bind (loop-var list-var) ("{foreach\\s*(\\$[\\w\\.]*)\\s*in\\s*(\\$[\\w\\.]*)\\s*}" str)
+    (list (parse-expression loop-var)
+          (parse-expression list-var))))
+
 (define-mode foreach (60 :all)
   (:allowed :all)
-  (:entry "{foreach[^}]*}(?=.*{/foreach})")
+  (:entry "{foreach\\s*\\$[\\w\\.]*\\s*in\\s*\\$[\\w\\.]*\\s*}(?=.*{/foreach})")
+  (:entry-attribute-parser parse-foreach-attributes)
   (:exit "{/foreach}"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -208,7 +214,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod wiki-parser:parse ((markup (eql :closure-template.parser)) (obj string))
-  (let* ((res (call-next-method))
+  (let* ((res (call-next-method markup (ppcre:regex-replace-all "\\s+" obj " ")))
          (namespace (iter (for item in res)
                           (finding (second item)
                                    such-that (and (consp item)

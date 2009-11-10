@@ -12,8 +12,16 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *symbols-category* (make-hash-table)))
 
-
 ;;;; utils
+
+(defun discard-parse-element ()
+  (error 'wiki-parser:bad-element-condition))
+
+(defun parse-expr-or-discard (expr)
+  (handler-case
+      (parse-expression expr)
+    (error ()
+      (discard-parse-element))))
 
 (defun parse-arguments/impl (str)
   (let ((args nil))
@@ -33,12 +41,6 @@
   (ppcre:register-groups-bind (name args) ("^{\\w*\\s*([\\w-\\.]*)((?:\\s*\\w*=\"\\w*\")*)\\s*}$" str)
     (cons name
           (parse-arguments/impl args))))
-
-(defun make-tag-post-handler (tag)
-  (eval `(lambda (obj)
-     (ppcre:register-groups-bind (expr) (,(format nil "^{(?:~A )?([^}]*)}$" tag) (second obj))
-       (list (car obj)
-             (parse-expression expr))))))
 
 ;;;; closure template syntax
 ;;;; see http://code.google.com/intl/ru/closure/templates/docs/commands.html
@@ -96,7 +98,7 @@
                                               (1- (length (second item)))))))
 
 (define-mode namespace (10 :baseonly)
-  (:special "{namespace\\s*[\\w\\.\\-]*\\s*}")
+  (:special "{namespace\\s+[\\w\\.\\-]+\\s*}")
   (:post-handler namespace-post-handler))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -122,15 +124,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun print-tag-post-handler (obj)
-  (ppcre:register-groups-bind (expr) ("^{(?:print )?([^}]*)}$" (second obj))
-    (list (car obj)
-          (parse-expression expr))))
-
+  (or (ppcre:register-groups-bind (expr) ("^{(?:print\\s+)?([^\\s}]+)}$" (second obj))
+        (list (car obj)
+              (parse-expr-or-discard expr)))
+      (discard-parse-element)))
 
 (define-mode print-tag (200 :all)
   (:special "{print[^}]*}"
             "{[^}]*}")
   (:post-handler print-tag-post-handler))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; msg
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-mode msg (30 :all)
   (:entry "{msg[^}]*}(?=.*{/msg})")
@@ -172,13 +178,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun parse-foreach-attributes (str)
-  (ppcre:register-groups-bind (loop-var list-var) ("{foreach\\s*(\\$[\\w\\.]*)\\s*in\\s*(\\$[\\w\\.]*)\\s*}" str)
-    (list (parse-expression loop-var)
-          (parse-expression list-var))))
+  (or (ppcre:register-groups-bind (loop-var list-var) ("^{foreach\\s*([^\\s}]+)\\s*in\\s*([^\\s}]+)\\s*}$" str)
+        (list (parse-expr-or-discard loop-var)
+              (parse-expr-or-discard list-var))) 
+      (discard-parse-element)))
 
 (define-mode foreach (60 :all)
   (:allowed :all)
-  (:entry "{foreach\\s*\\$[\\w\\.]*\\s*in\\s*\\$[\\w\\.]*\\s*}(?=.*{/foreach})")
+  (:entry "{foreach\\s+[^}]*}(?=.*{/foreach})")
   (:entry-attribute-parser parse-foreach-attributes)
   (:exit "{/foreach}"))
 
@@ -187,13 +194,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun parse-for-attributes (str)
-  (ppcre:register-groups-bind (loop-var expr)
-      ("{for\\s*(\\$\\w+)\\s*in\\s*(range\\(\\s*[^}]+\\s*(?:,\\s*[^}]+\\s*)?(?:,\\s*[^}]+\\s*)?\\))\\s*}" str)
-    (list loop-var
-          (parse-expression expr))))
+  (or (ppcre:register-groups-bind (loop-var expr) ("{for\\s+([^\\s]+)\\s+in\\s+([^}]*)}" str)
+        (let ((p-expr (parse-expr-or-discard expr)))
+          (when (or (not (eql :range (car p-expr)))
+                    (not (second p-expr))
+                    (> (length p-expr) 4))
+            (discard-parse-element))
+          (list loop-var
+                p-expr)))
+      (discard-parse-element)))
 
 (define-mode for-expr (70 :all)
-  (:entry "{for\\s*\\$\\w+\\s*in\\s*range\\(\\s*[^}]+\\s*(?:,\\s*[^}]+\\s*)?(?:,\\s*[^}]+\\s*)?\\)\\s*}(?=.*{/for})")
+  (:entry "{for\\s+[^}]*}(?=.*{/for})")
   (:entry-attribute-parser parse-for-attributes)
   (:exit "{/for}"))
 

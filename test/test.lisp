@@ -47,6 +47,11 @@
   (ensure-same "Hello world"
                (parse-expression "'Hello world'")))
 
+(addtest (expression-parser-test)
+  expression-6
+  (ensure-same '(:variable "x" "y")
+               (parse-expression "$x.y")))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; expression parser tests
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -54,10 +59,11 @@
 (deftestsuite template-parser-test (closure-template-test) ())
 
 (addtest (template-parser-test)
-  hello-name-template
+  hello-name-template-1
   (ensure-same '(CLOSURE-TEMPLATE.PARSER:TEMPLATE ("helloName") "Hello "
                  (CLOSURE-TEMPLATE.PARSER:PRINT-TAG (:VARIABLE "name")))
                (parse-single-template "{template helloName}Hello {$name}{/template}")))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Run all tests

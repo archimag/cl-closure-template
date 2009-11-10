@@ -8,7 +8,8 @@
 
 (defpackage #:closure-template.parser.expression
   (:use #:cl)
-  (:export #:parse-expression))
+  (:export #:parse-expression
+           #:bad-expression-condition))
 
 (defpackage #:closure-template.parser
   (:use #:cl #:iter #:closure-template.parser.expression)

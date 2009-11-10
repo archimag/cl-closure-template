@@ -7,6 +7,10 @@
 
 (in-package #:closure-template)
 
+(defvar *template-variables* nil)
+
+(defvar *local-variables* nil)
+
 (defun write-template-string (str)
   (write-string str *template-output*))
 
@@ -17,10 +21,8 @@
                               upname
                               "CLOSURE-TEMPLATE.SHARE")
                (:use #:cl)
-               (:import-from #:closure-template #:write-template-string)))))
+               (:import-from #:closure-template #:write-template-string #:*template-output*)))))
 
-
-(defvar *template-data*)
 
 (defparameter *default-translate-package*
   (make-template-package))
@@ -37,7 +39,11 @@
            (symbolp (car expr)))
       (let ((key (car expr)))
         (case key
-          (:variable `(getf *template-data* ,(intern (string-upcase (second expr)) :keyword)))
+          (:variable (let ((varkey (intern (string-upcase (second expr)) :keyword)))
+                       (when (not (or (find varkey *local-variables*)
+                                      (find varkey *template-variables*)))
+                         (push varkey *template-variables*))
+                       (intern (string-upcase (second expr)))))
           (otherwise (cons (symbol-from-key (car expr))
                            (iter (for item in (cdr expr))
                                  (collect (translate-expression backend item)))))))
@@ -57,11 +63,16 @@
                             
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:template)) args)
-  `(defun ,(intern (string-upcase (caar args))) (data)
-     (let ((*template-data* data))
-       (with-output-to-string (*template-output*)
-         ,(translate-item backend
-                        (cdr args))))))
+  (let* ((*template-variables* nil)
+         (body `(with-output-to-string (*template-output*)
+                  ,(translate-item backend
+                                   (cdr args))))
+         (binds (iter (for var in *template-variables*)
+                      (collect (list (find-symbol (symbol-name var) *package*)
+                                     `(getf ^data^ ,var))))))
+  `(defun ,(intern (string-upcase (caar args))) (^data^)
+     (let (,@binds)
+       ,body))))
 
 
 (defmethod translate-template ((backend (eql :common-lisp-backend)) template)

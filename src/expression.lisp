@@ -17,7 +17,9 @@
 
 (defun operator-char? (x) (find x "<=>&^|*/,"))
 
-(defun symbol-char? (x) (or (alphanumericp x) (find x "$")))
+(defun symbol-char? (x)
+  (or (alphanumericp x)
+      (find x "$.")))
 
 (defun string-delimiter-char? (x) (char= x #\'))
 
@@ -142,10 +144,13 @@
     (if j
         (values (subseq string i j) (1+ j)))))
 
+
 (defun make-logic-symbol (string)
   "Convert string to symbol, preserving case, except for AND/OR/NOT/FORALL/EXISTS."
   (cond ((find string '(and or not) :test #'string-equal))
-        ((char= #\$ (char string 0)) (list :variable (subseq string 1)))
+        ((char= #\$ (char string 0)) (cons :variable
+                                           (split-sequence:split-sequence #\.
+                                                                          (subseq string 1))))
         ((equal string "null") :nil)
         (t (intern (string-upcase string) :keyword))))
             

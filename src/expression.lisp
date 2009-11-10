@@ -10,6 +10,13 @@
 
 (in-package #:closure-template.parser.expression)
 
+(define-condition bad-expression-condition (simple-error) ())
+
+(defun bad-expression (format-control &rest format-args)
+  (error 'bad-expression-condition
+         :format-control format-control
+         :format-arguments format-args))
+
 (defun op (exp) "Operator of an expression" (if (listp exp) (first exp) exp))
 (defun args (exp) "Arguments of an expression" (if (listp exp) (rest exp) nil))
 (defun arg1 (exp) "First argument" (first (args exp)))
@@ -59,7 +66,7 @@
 
 (defun reduce-infix (infix)
   "Find the highest-precedence operator in INFIX and reduce accordingly."
-  (dolist (ops *infix-ops* (error "Bad syntax for infix expression: ~S" infix))
+  (dolist (ops *infix-ops* (bad-expression "Bad syntax for infix expression: ~S" infix))
     (let* ((pos (position-if #'(lambda (i) (assoc i ops)) infix
                              :from-end (eq (op-type (first ops)) 'MATCH)))
            (op (when pos (assoc (elt infix pos) ops))))
@@ -133,7 +140,7 @@
             ((symbol-char? ch) (parse-span string #'symbol-char? i))
             ((operator-char? ch) (parse-span string #'operator-char? i))
             ((string-delimiter-char? ch) (parse-string string (1+ i)))
-            (t (error "unexpected character: ~C" ch)))))
+            (t (bad-expression "unexpected character: ~C" ch)))))
 
 (defun parse-span (string pred i)
   (let ((j (position-if-not pred string :start i)))
@@ -156,5 +163,7 @@
             
 
 (defun parse-expression (str)
+  (unless str
+    (bad-expression "NIL is not expression"))
   (let ((*package* (find-package '#:closure-template.parser.expression)))
     (->prefix (string->infix str))))

@@ -28,16 +28,18 @@
                   (parse-template template)))
 
 (defmethod translate-item (backend (item cons))
-  (if (symbolp (car item))
-      (translate-named-item backend
-                          (car item)
-                          (cdr item))
-      (cons 'progn
+  (cond
+    ((symbolp (car item)) (translate-named-item backend
+                                                (car item)
+                                                (cdr item)))
+    ((= (length item) 1) (translate-item backend
+                                         (car item)))
+    (t (cons 'progn
             (iter (for i in item)
                   (let ((c (translate-item backend
                                          i)))
                     (when c
-                      (collect c)))))))
+                      (collect c))))))))
 
 (defmethod translate-item (backend (item symbol))
   nil)

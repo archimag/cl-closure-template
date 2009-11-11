@@ -316,9 +316,17 @@
 ;;; call
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-mode call (80 :all)
+;; "{template test}{call hello-world}{param x}y{/param}{/call}{/template}")
+
+(define-mode param (10)
   (:allowed :all)
-  (:entry "{call\\s*\\w*\\s*}(?=.*{/call})")
+  (:special "{param\\s+[^}]+/}")
+  (:entry "{param\\s+[^}]+}(?=.*{/param})")
+  (:exit "{/param}"))
+
+(define-mode call (80 :all)
+  (:allowed :all param)
+  (:entry "{call\\s+[^}]+}(?=.*{/call})")
   (:exit "{/call}")
   (:entry-attribute-parser parse-name-and-arguments))
 

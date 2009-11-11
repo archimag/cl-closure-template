@@ -11,7 +11,6 @@
 
 (in-package #:closure-template.test)
 
-
 (deftestsuite closure-template-test () ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -52,8 +51,11 @@
                (parse-expression "$x.y")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; expression parser tests
+;; template parser tests
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun parse-single-template (obj)
+  (third (parse-template obj)))
 
 (deftestsuite template-parser-test (closure-template-test) ())
 
@@ -159,6 +161,31 @@
                  (closure-template.parser:for-tag ((:variable "x") (:range 4 10 2)) " ! "))
                (parse-single-template "{template test}{for $x in range(4, 10, 2)} ! {/for}{/template}")))
 
+
+;;;; call
+
+(addtest (template-parser-test)
+  call-1
+  (ensure-same '(closure-template.parser:template ("test")
+                 (closure-template.parser:call "hello-name" (:variable "x")))
+               (parse-single-template "{template test}{call hello-name data=\"$x\" /}{/template}")))
+
+(addtest (template-parser-test)
+  call-2
+  (ensure-same '(closure-template.parser:template ("test")
+                 (closure-template.parser:call "hello-name" nil
+                  (closure-template.parser:param (:variable "name") (:variable "x"))))
+               (parse-single-template "{template test}{call hello-name}{param name: $x /}{/call}{/template}")))
+
+
+(addtest (template-parser-test)
+  call-3
+  (ensure-same '(closure-template.parser:template ("test")
+                 (closure-template.parser:call "hello-name" (:variable "data")
+                  (closure-template.parser:param (:variable "a") (:variable "x"))
+                  (closure-template.parser:param (:variable "b") nil
+                   "Hello " (closure-template.parser:print-tag (:variable "y")))))
+               (parse-single-template "{template test}{call hello-name data=\"$data\"}{param a: $x /}{param b}Hello {$y}{/param} {/call}{/template}")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; common-lisp-backend test

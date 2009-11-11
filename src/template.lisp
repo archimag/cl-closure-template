@@ -23,6 +23,16 @@
     (error ()
       (discard-parse-element))))
 
+(defun check-simple-variable (expr)
+  (unless (and (consp expr)
+               (eql :variable (car expr))
+               (= (length expr) 2)
+               (stringp (second expr)))
+    (discard-parse-element))
+  expr)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun parse-arguments/impl (str)
   (let ((args nil))
     (ppcre:do-matches-as-strings (bind "\\w*=\"\\w*\"" str)
@@ -258,17 +268,10 @@
 ;;; foreach
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun check-loop-variable (expr)
-  (unless (and (consp expr)
-               (eql :variable (car expr))
-               (= (length expr) 2)
-               (stringp (second expr)))
-    (discard-parse-element))
-  expr)
 
 (defun parse-foreach-attributes (str)
   (or (ppcre:register-groups-bind (loop-var list-var) ("^{foreach\\s+([^\\s}]+)\\s*in\\s*([^\\s}]+)\\s*}$" str)
-        (list (check-loop-variable (parse-expr-or-discard loop-var))
+        (list (check-simple-variable (parse-expr-or-discard loop-var))
               (parse-expr-or-discard list-var))) 
       (discard-parse-element)))
 
@@ -296,13 +299,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun parse-for-attributes (str)
-  (or (ppcre:register-groups-bind (loop-var expr) ("{for\\s+([^\\s]+)\\s+in\\s+([^}]*)}" str)
+  (or (ppcre:register-groups-bind (loop-var expr) ("^{for\\s+([^\\s]+)\\s+in\\s+([^}]*)}$" str)
         (let ((p-expr (parse-expr-or-discard expr)))
           (unless (and (eql :range (car p-expr))
                        (second p-expr)
                        (< (length p-expr) 5))
             (discard-parse-element))
-          (list (check-loop-variable (parse-expr-or-discard loop-var))
+          (list (check-simple-variable (parse-expr-or-discard loop-var))
                 p-expr)))
       (discard-parse-element)))
 
@@ -316,19 +319,67 @@
 ;;; call
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; "{template test}{call hello-world}{param x}y{/param}{/call}{/template}")
+(defun entry-parse-param-name (str)
+  (or (ppcre:register-groups-bind (name) ("^{param\\s+(.*)\\s*}$" str)
+        (check-simple-variable (parse-expr-or-discard (format nil "$~A" name))))
+      (discard-parse-element)))
+
+(defun param-post-handler (item)
+  (if (and (= (length item) 2)
+           (stringp (second item)))
+      (or (ppcre:register-groups-bind (name expr) ("^{param\\s+([\\w-]*):\\s*(.*)/}$" (second item))
+            (list 'param
+                  (check-simple-variable (parse-expr-or-discard (format nil "$~A" name)))
+                  (parse-expr-or-discard expr)))
+          (discard-parse-element))
+      (list* 'param
+             (second item)
+             nil
+             (cddr item))))
 
 (define-mode param (10)
   (:allowed :all)
   (:special "{param\\s+[^}]+/}")
-  (:entry "{param\\s+[^}]+}(?=.*{/param})")
-  (:exit "{/param}"))
+  (:entry "{param\\s+[^}/]+}(?=.*{/param})")
+  (:entry-attribute-parser entry-parse-param-name)
+  (:exit "{/param}")
+  (:post-handler param-post-handler))
+
+(defun parse-call-name-and-data (str)
+  (or (ppcre:register-groups-bind (name) ("^{call\\s+([\\w-\\.]+)\\s*/?}$" str)
+        (list name
+              nil))
+      (ppcre:register-groups-bind (name expr) ("^{call\\s+([\\w-\\.]*)\\s+data=\"([^}]+)\"\\s*/?}$" str)
+        (list name
+              (parse-expr-or-discard expr)))
+      (discard-parse-element)))
+
+(defun call-post-handler (item)
+  (unless (cdr item)
+    (discard-parse-element))
+  (if (and (= (length item) 2)
+           (stringp (second item)))
+      (let ((name-and-data (parse-call-name-and-data (second item))))
+        (unless (second name-and-data)
+          (discard-parse-element))
+        (cons 'call
+              name-and-data))
+      (cons 'call
+            (concatenate 'list
+                         (second item)
+                         (iter (for param in (cddr item))
+                               (if (and (consp param)
+                                        (eql 'param (car param)))
+                                   (collect param)))))))
+
 
 (define-mode call (80 :all)
-  (:allowed :all param)
+  (:allowed param )
+  (:special "{call[^}]*/}")
   (:entry "{call\\s+[^}]+}(?=.*{/call})")
+  (:entry-attribute-parser parse-call-name-and-data)
   (:exit "{/call}")
-  (:entry-attribute-parser parse-name-and-arguments))
+  (:post-handler call-post-handler))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; css
@@ -360,5 +411,3 @@
 (defun parse-template (obj)
   (wiki-parser:parse :closure-template.parser obj))
 
-(defun parse-single-template (obj)
-  (third (parse-template obj)))

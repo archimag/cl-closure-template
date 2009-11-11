@@ -25,4 +25,6 @@
            #:parse-single-template
            #:parse-expression
            #:translate-template
-           #:compile-template))
+           #:compile-template
+           #:*default-translate-package*
+           #:make-template-package))

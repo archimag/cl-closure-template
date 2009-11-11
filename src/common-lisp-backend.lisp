@@ -65,7 +65,9 @@
         expr))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:namespace)) args)
-  (let ((*package* (make-template-package (car args))))
+  (let ((*package* (if (car args)
+                       (make-template-package (car args))
+                       *default-translate-package*)))
     (iter (for tmpl in (cdr args))
           (export (intern (string-upcase (car (second tmpl))))))
     (translate-item backend
@@ -102,7 +104,12 @@
                     do ,(translate-item backend
                                         (second args)))
                  ,(translate-item backend
-                                 (third args))))))))
+                                 (third args)))))
+        `(loop
+            for ,loop-var in ,seq-expr
+            do ,(translate-item backend
+                                (second args)))
+        )))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:for-tag)) args)
   (let* ((loop-var (intern (string-upcase (second (first (first args))))))

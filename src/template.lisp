@@ -226,6 +226,7 @@
       (discard-parse-element)))
 
 (define-mode for-tag (70 :all)
+  (:allowed :all)
   (:entry "{for\\s+[^}]*}(?=.*{/for})")
   (:entry-attribute-parser parse-for-attributes)
   (:exit "{/for}"))

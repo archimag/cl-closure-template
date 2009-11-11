@@ -150,11 +150,11 @@
 (define-mode elseif (10 :if)
   (:special "{elseif[^}]*}"))
 
-(define-mode else-expr (10 :if)
+(define-mode else-tag (10 :if)
   (:special "{else}"))
 
-(define-mode if-expr (40 :all)
-  (:allowed elseif else-expr)
+(define-mode if-tag (40 :all)
+  (:allowed elseif else-tag)
   (:entry "{if[^}]*}(?=.*{/if})")
   (:exit "{/if}"))
 
@@ -162,14 +162,14 @@
 ;;; switch
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-mode case-expr (10 :switch)
+(define-mode case-tag (10 :switch)
   (:special "{\\s*case[^}]*}"))
 
-(define-mode default-expr (10 :switch)
+(define-mode default-tag (10 :switch)
   (:special "{\\s*default\\s*}"))
 
-(define-mode switch-expr (50 :all)
-  (:allowed case-expr default-expr)
+(define-mode switch-tag (50 :all)
+  (:allowed case-tag default-tag)
   (:entry "{switch[^}]*}(?=.*{/switch})")
   (:exit "{/switch}"))
 
@@ -177,9 +177,17 @@
 ;;; foreach
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun check-loop-variable (expr)
+  (unless (and (consp expr)
+               (eql :variable (car expr))
+               (= (length expr) 2)
+               (stringp (second expr)))
+    (discard-parse-element))
+  expr)
+
 (defun parse-foreach-attributes (str)
   (or (ppcre:register-groups-bind (loop-var list-var) ("^{foreach\\s*([^\\s}]+)\\s*in\\s*([^\\s}]+)\\s*}$" str)
-        (list (parse-expr-or-discard loop-var)
+        (list (check-loop-variable (parse-expr-or-discard loop-var))
               (parse-expr-or-discard list-var))) 
       (discard-parse-element)))
 
@@ -193,8 +201,7 @@
            parts)))
 
 (define-mode ifempty (10)
-  (:single "{ifempty}")
-  (:special))
+  (:single "{ifempty}"))
 
 (define-mode foreach (60 :all)
   (:allowed :all ifempty)
@@ -210,15 +217,15 @@
 (defun parse-for-attributes (str)
   (or (ppcre:register-groups-bind (loop-var expr) ("{for\\s+([^\\s]+)\\s+in\\s+([^}]*)}" str)
         (let ((p-expr (parse-expr-or-discard expr)))
-          (when (or (not (eql :range (car p-expr)))
-                    (not (second p-expr))
-                    (> (length p-expr) 4))
+          (unless (and (eql :range (car p-expr))
+                       (second p-expr)
+                       (< (length p-expr) 5))
             (discard-parse-element))
-          (list loop-var
+          (list (check-loop-variable (parse-expr-or-discard loop-var))
                 p-expr)))
       (discard-parse-element)))
 
-(define-mode for-expr (70 :all)
+(define-mode for-tag (70 :all)
   (:entry "{for\\s+[^}]*}(?=.*{/for})")
   (:entry-attribute-parser parse-for-attributes)
   (:exit "{/for}"))
@@ -237,7 +244,7 @@
 ;;; css
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-mode css-expr (20 :all)
+(define-mode css-tag (20 :all)
   (:special "{css[^}]*}"))
 
 (wiki-parser:remake-lexer 'toplevel)

@@ -79,13 +79,13 @@
                                    (cdr args))))
          (binds (iter (for var in *template-variables*)
                       (collect (list (find-symbol (symbol-name var) *package*)
-                                     `(getf ^data^ ,var))))))
+                                     `(getf $data$ ,var))))))
     (if binds
-        `(defun ,(intern (string-upcase (caar args))) (^data^)
+        `(defun ,(intern (string-upcase (caar args))) ($data$)
            (let (,@binds)
              ,body))
-        `(defun ,(intern (string-upcase (caar args))) (&optional ^data^)
-           (declare (ignore ^data^))
+        `(defun ,(intern (string-upcase (caar args))) (&optional $data$)
+           (declare (ignore $data$))
            ,body))))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:foreach)) args)
@@ -103,6 +103,21 @@
                                         (second args)))
                  ,(translate-item backend
                                  (third args))))))))
+
+(defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:for-tag)) args)
+  (let* ((loop-var (intern (string-upcase (second (first (first args))))))
+         (*local-variables* (cons loop-var
+                                  *local-variables*))
+         (from-expr (translate-expression backend
+                                          (second (second (first args)))))
+         (below-expr (translate-expression backend
+                                           (third (second (first args)))))
+         (by-expr (translate-expression backend
+                                        (fourth (second (first args))))))
+    `(loop
+        for ,loop-var from ,(if below-expr from-expr 0) below ,(or below-expr from-expr) ,@(if by-expr (list 'by by-expr))
+        do ,(translate-item backend
+                            (cdr args)))))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:literal)) args)
   `(write-template-string ,(car args)))

@@ -71,11 +71,29 @@
                (parse-single-template "{template literal-test}{literal}Test {$x} {foreach $foo in $bar}{$foo}{/foreach}{/literal}{/template}")))
 
 (addtest (template-parser-test)
-  loop-1
+  foreach-1
   (ensure-same '(closure-template.parser:template ("test")
                  (closure-template.parser:foreach ((:variable "x") (:variable "y" "foo"))
                   ((closure-template.parser:print-tag (:variable "x")))))
                (parse-single-template "{template test}{foreach $x in $y.foo }{$x}{/foreach}{/template}")))
+
+(addtest (template-parser-test)
+  for-1
+  (ensure-same '(closure-template.parser:template ("test")
+                 (closure-template.parser:for-tag ((:variable "x") (:range 10)) " ! "))
+               (parse-single-template "{template test}{for $x in range(10)} ! {/for}{/template}")))
+
+(addtest (template-parser-test)
+  for-2
+  (ensure-same '(closure-template.parser:template ("test")
+                 (closure-template.parser:for-tag ((:variable "x") (:range 4 10)) " ! "))
+               (parse-single-template "{template test}{for $x in range(4, 10)} ! {/for}{/template}")))
+
+(addtest (template-parser-test)
+  for-3
+  (ensure-same '(closure-template.parser:template ("test")
+                 (closure-template.parser:for-tag ((:variable "x") (:range 4 10 2)) " ! "))
+               (parse-single-template "{template test}{for $x in range(4, 10, 2)} ! {/for}{/template}")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Run all tests

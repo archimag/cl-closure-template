@@ -57,17 +57,23 @@
 
 (deftestsuite template-parser-test (closure-template-test) ())
 
+;;;; print
+
 (addtest (template-parser-test)
   hello-name-template-1
   (ensure-same '(closure-template.parser:template ("helloName") "Hello "
                  (closure-template.parser:print-tag (:VARIABLE "name")))
                (parse-single-template "{template helloName}Hello {$name}{/template}")))
 
+;;;; literal
+
 (addtest (template-parser-test)
   literal-1
   (ensure-same '(closure-template.parser:template ("literal-test") 
                  (closure-template.parser:literal "Test {$x} {foreach $foo in $bar}{$foo}{/foreach}"))
                (parse-single-template "{template literal-test}{literal}Test {$x} {foreach $foo in $bar}{$foo}{/foreach}{/literal}{/template}")))
+
+;;;; if
 
 (addtest (template-parser-test)
   if-1
@@ -104,12 +110,36 @@
                   (t ("Hello world"))))
                (parse-single-template "{template if-test}{if $x}Hello {$x}{elseif $y}Hello {$y}{elseif $z}By!{else}Hello world{/if}{/template}")))
 
+;;;; switch
+
+(addtest (template-parser-test)
+  switch-1
+  (ensure-same '(closure-template.parser:template ("switch-test")
+                 (closure-template.parser:switch-tag (:variable "x")
+                  nil
+                  ((1) ("hello world"))
+                  ((2 3 4) ("by-by"))))
+               (parse-single-template "{template switch-test}{switch $x}{case 1}hello world{case 2, 3, 4}by-by{/switch}{/template}")))
+
+(addtest (template-parser-test)
+  switch-2
+  (ensure-same '(closure-template.parser:template ("switch-test")
+                 (closure-template.parser:switch-tag (:variable "x")
+                  ("default value")
+                  ((1) ("hello world"))
+                  ((2 3 4) ("by-by"))))
+               (parse-single-template "{template switch-test}{switch $x}{case 1}hello world{case 2, 3, 4}by-by{default}default value{/switch}{/template}")))
+
+;;;; foreach
+
 (addtest (template-parser-test)
   foreach-1
   (ensure-same '(closure-template.parser:template ("test")
                  (closure-template.parser:foreach ((:variable "x") (:variable "y" "foo"))
                   ((closure-template.parser:print-tag (:variable "x")))))
                (parse-single-template "{template test}{foreach $x in $y.foo }{$x}{/foreach}{/template}")))
+
+;;;; for
 
 (addtest (template-parser-test)
   for-1

@@ -199,16 +199,60 @@
 ;;; switch
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun parse-switch-expression (str)
+  (or (ppcre:register-groups-bind (expr) ("^{switch\\s+([^}]*)}$" str)
+        (parse-expr-or-discard expr))
+      (discard-parse-element)))
+
+(defun switch-post-handler (item)
+  (flet ((parse-case-expression (str)
+           (or (ppcre:register-groups-bind (expr) ("^{case\\s+([^}]*)}$" str)
+                 (cdr (parse-expr-or-discard (format nil "[~A]" expr))))
+               (discard-parse-element)))
+         (case-p (obj)
+           (and (consp obj)
+                (eql (first obj) 'case-tag))))
+    (let* ((d-parts (split-sequence:split-sequence 'default-tag (cddr item))))
+      (when (or (> (length d-parts) 2)
+                (find-if #'case-p
+                         (second d-parts))
+                (not (find-if #'case-p
+                              (first d-parts))))
+        (discard-parse-element))
+      (list* 'switch-tag
+             (second item)
+             (second d-parts)
+             (iter (with keys)
+                   (with form)
+                   (for i on (first d-parts))
+                   (if (and (consp (car i))
+                            (case-p (first i)))
+                       (progn
+                         (when keys
+                           (collect (list keys
+                                          (nreverse form))))
+                         (setf form nil)
+                         (setf keys
+                               (parse-case-expression (second (car i)))))
+                       (when keys
+                         (push (car i) form)))
+                   (unless (cdr i)
+                     (collect (list keys
+                                    (nreverse form)))))))))
+
+
 (define-mode case-tag (10 :switch)
   (:special "{\\s*case[^}]*}"))
 
 (define-mode default-tag (10 :switch)
-  (:special "{\\s*default\\s*}"))
+  (:single "{\\s*default\\s*}"))
 
 (define-mode switch-tag (50 :all)
-  (:allowed case-tag default-tag)
+  (:allowed :all case-tag default-tag)
   (:entry "{switch[^}]*}(?=.*{/switch})")
-  (:exit "{/switch}"))
+  (:entry-attribute-parser parse-switch-expression)
+  (:exit "{/switch}")
+  (:post-handler switch-post-handler))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; foreach

@@ -147,16 +147,53 @@
 ;;; if
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun parse-if-condition (str)
+  (or (ppcre:register-groups-bind (expr) ("^{(?:else)?if\\s+([^}]*)}$" str)
+        (parse-expr-or-discard expr))
+      (discard-parse-element)))
+
+(defun if-post-handler (item)
+  (let* ((e-parts (split-sequence:split-sequence 'else-tag (cddr item))))
+    (when (or (> (length e-parts) 2)
+              (find-if (lambda (s)
+                         (and (consp s)
+                              (eql 'elseif (first s))))
+                       (second e-parts)))
+      (discard-parse-element))
+    (cons 'if-tag
+          (iter (with expr = (second item))
+                (with body)
+                (for i on (first e-parts))
+                (if (and (consp (car i))
+                         (eql (first (car i))
+                              'elseif))
+                    (progn
+                      (collect (list expr
+                                     (nreverse body)))
+                      (setf body nil)
+                      (setf expr
+                            (parse-if-condition (second (car i)))))
+                    (push (car i) body))
+                (unless (cdr i)
+                  (collect (list expr
+                                 (nreverse body)))
+                  (if (second e-parts)
+                      (collect (list t
+                                     (second e-parts)))))))))
+
+
 (define-mode elseif (10 :if)
-  (:special "{elseif[^}]*}"))
+  (:special "{elseif\\s+[^}]*}"))
 
 (define-mode else-tag (10 :if)
-  (:special "{else}"))
+  (:single "{else}"))
 
 (define-mode if-tag (40 :all)
-  (:allowed elseif else-tag)
+  (:allowed :all elseif else-tag)
   (:entry "{if[^}]*}(?=.*{/if})")
-  (:exit "{/if}"))
+  (:entry-attribute-parser parse-if-condition)
+  (:exit "{/if}")
+  (:post-handler if-post-handler))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; switch
@@ -186,7 +223,7 @@
   expr)
 
 (defun parse-foreach-attributes (str)
-  (or (ppcre:register-groups-bind (loop-var list-var) ("^{foreach\\s*([^\\s}]+)\\s*in\\s*([^\\s}]+)\\s*}$" str)
+  (or (ppcre:register-groups-bind (loop-var list-var) ("^{foreach\\s+([^\\s}]+)\\s*in\\s*([^\\s}]+)\\s*}$" str)
         (list (check-loop-variable (parse-expr-or-discard loop-var))
               (parse-expr-or-discard list-var))) 
       (discard-parse-element)))

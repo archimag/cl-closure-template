@@ -90,6 +90,28 @@
            (declare (ignore $data$))
            ,body))))
 
+
+(defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:if-tag)) args)
+  (cond
+    ((= (length args) 1) `(when ,(translate-expression backend
+                                                       (first (first args)))
+                            ,(translate-item backend
+                                             (cdr (first args)))))
+    ((and (= (length args) 2)
+          (eql (first (second args)) t)) `(if ,(translate-expression backend
+                                                                     (first (first args)))
+                                              ,(translate-item backend
+                                                               (cdr (first args)))
+                                              ,(translate-item backend
+                                                               (cdr (second args)))))
+    (t (cons 'cond
+             (iter (for v in args)
+                   (collect (list (translate-expression backend
+                                                        (first v))
+                                  (translate-item backend
+                                                  (cdr v)))))))))
+
+
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:foreach)) args)
   (let* ((loop-var (intern (string-upcase (second (first (first args))))))
          (*local-variables* (cons loop-var
@@ -129,8 +151,10 @@
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:literal)) args)
   `(write-template-string ,(car args)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; translate and compile template methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod translate-template ((backend (eql :common-lisp-backend)) template)
   (translate-template (make-instance 'common-lisp-backend)

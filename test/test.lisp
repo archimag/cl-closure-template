@@ -70,6 +70,41 @@
                (parse-single-template "{template literal-test}{literal}Test {$x} {foreach $foo in $bar}{$foo}{/foreach}{/literal}{/template}")))
 
 (addtest (template-parser-test)
+  if-1
+  (ensure-same '(closure-template.parser:template ("if-test")
+                 (closure-template.parser:if-tag
+                  ((:variable "x") ("Hello "
+                                    (closure-template.parser:print-tag (:variable "x"))))))
+               (parse-single-template "{template if-test}{if $x}Hello {$x}{/if}{/template}")))
+
+(addtest (template-parser-test)
+  if-2
+  (ensure-same '(closure-template.parser:template ("if-test")
+                 (closure-template.parser:if-tag
+                  ((:variable "x") ("Hello " (closure-template.parser:print-tag (:variable "x"))))
+                  (t ("Hello world"))))
+               (parse-single-template "{template if-test}{if $x}Hello {$x}{else}Hello world{/if}{/template}")))
+
+(addtest (template-parser-test)
+  if-3
+  (ensure-same '(closure-template.parser:template ("if-test")
+                 (closure-template.parser:if-tag
+                  ((:variable "x") ("Hello " (closure-template.parser:print-tag (:variable "x"))))
+                  ((:variable "y") ("Hello " (closure-template.parser:print-tag (:variable "y"))))
+                  (t ("Hello world"))))
+               (parse-single-template "{template if-test}{if $x}Hello {$x}{elseif $y}Hello {$y}{else}Hello world{/if}{/template}")))
+
+(addtest (template-parser-test)
+  if-4
+  (ensure-same '(closure-template.parser:template ("if-test")
+                 (closure-template.parser:if-tag
+                  ((:variable "x") ("Hello " (closure-template.parser:print-tag (:variable "x"))))
+                  ((:variable "y") ("Hello " (closure-template.parser:print-tag (:variable "y"))))
+                  ((:variable "z") ("By!"))
+                  (t ("Hello world"))))
+               (parse-single-template "{template if-test}{if $x}Hello {$x}{elseif $y}Hello {$y}{elseif $z}By!{else}Hello world{/if}{/template}")))
+
+(addtest (template-parser-test)
   foreach-1
   (ensure-same '(closure-template.parser:template ("test")
                  (closure-template.parser:foreach ((:variable "x") (:variable "y" "foo"))
@@ -123,6 +158,8 @@
                 (funcall (find-symbol "HELLO-NAME" :closute-template.test.templates)
                          '(:name "Closure Template")))))
 
+;;;; dotted variables
+
 (addtest (common-lisp-backend-test)
   dotted-vars-1
   (ensure-same "Hello world"
@@ -131,7 +168,47 @@
                                   "{template dotted}{$obj.first} {$obj.second}{/template}")
                 (funcall (find-symbol "DOTTED" :closute-template.test.templates)
                          '(:obj (:first "Hello" :second "world"))))))
-               
+
+;;;; if
+
+(addtest (common-lisp-backend-test)
+  if-1
+  (ensure-same '("Hello Andrey" "")
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template test}{if $name}Hello {$name}{/if}{/template}")
+                (list (funcall (find-symbol "TEST" :closute-template.test.templates)
+                               '(:name "Andrey"))
+                      (funcall (find-symbol "TEST" :closute-template.test.templates)
+                               nil)))))
+
+(addtest (common-lisp-backend-test)
+  if-2
+  (ensure-same '("Hello Andrey" "Hello Guest")
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template test}Hello {if $name}{$name}{else}Guest{/if}{/template}")
+                (list (funcall (find-symbol "TEST" :closute-template.test.templates)
+                               '(:name "Andrey"))
+                      (funcall (find-symbol "TEST" :closute-template.test.templates)
+                               nil)))))
+
+(addtest (common-lisp-backend-test)
+  if-3
+  (ensure-same '("Hello Andrey" "By Masha" "Thank Vasy" "Guest?")
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template test}{if $hello}Hello {$hello}{elseif $by}By {$by}{elseif $thank}Thank {$thank}{else}Guest?{/if}{/template}")
+                (list (funcall (find-symbol "TEST" :closute-template.test.templates)
+                               '(:hello "Andrey"))
+                      (funcall (find-symbol "TEST" :closute-template.test.templates)
+                               '(:by "Masha"))
+                      (funcall (find-symbol "TEST" :closute-template.test.templates)
+                               '(:thank "Vasy"))
+                      (funcall (find-symbol "TEST" :closute-template.test.templates)
+                               nil)))))
+
+;;;; foreach
 
 (addtest (common-lisp-backend-test)
   foreach-1
@@ -152,6 +229,8 @@
                                '(:opernands ("alpha" "beta" "gamma")))
                       (funcall (find-symbol "TEST" :closute-template.test.templates)
                                nil)))))
+
+;;;; for
 
 (addtest (common-lisp-backend-test)
   for-1
@@ -177,7 +256,6 @@
                                   "{template test}{for $i in range($from, $to, $by)}{$i}{/for}{/template}")
                 (funcall (find-symbol "TEST" :closute-template.test.templates)
                          '(:from 1 :to 10 :by 3)))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Run all tests

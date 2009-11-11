@@ -238,6 +238,23 @@
                       (funcall (find-symbol "TEST" :closute-template.test.templates)
                                nil)))))
 
+;;;; switch
+
+(addtest (common-lisp-backend-test)
+  switch-1
+  (ensure-same '("Variant 1: 0" "Variant 2: Hello" "Miss!" "Variant 2: 2")
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{switch $var}{case 0}Variant 1: {$var}{case 1, 'Hello', 2}Variant 2: {$var}{default}Miss!{/switch}{/template}")
+                 (list (funcall (find-symbol "TEST" :closute-template.test.templates)
+                                '(:var 0))
+                       (funcall (find-symbol "TEST" :closute-template.test.templates)
+                                '(:var "Hello"))                       
+                       (funcall (find-symbol "TEST" :closute-template.test.templates)
+                                nil)
+                       (funcall (find-symbol "TEST" :closute-template.test.templates)
+                                '(:var 2))))))
+               
 ;;;; foreach
 
 (addtest (common-lisp-backend-test)

@@ -111,6 +111,21 @@
                                   (translate-item backend
                                                   (cdr v)))))))))
 
+(defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:switch-tag)) args)
+  (let* ((case-var (gensym "$G"))
+         (clauses (iter (for clause in (cddr args))
+                        (collect `((find ,case-var (list ,@(first clause)) :test #'equal) ,(translate-item backend
+                                                                                     (cdr clause)))))))
+           
+    `(let ((,case-var ,(translate-expression backend
+                                             (first args))))
+       (cond
+         ,@clauses
+         ,@(if (second args) (list (list t
+                                         (translate-item backend
+                                                         (second args)))))))))
+     
+
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:foreach)) args)
   (let* ((loop-var (intern (string-upcase (second (first (first args))))))
@@ -118,7 +133,7 @@
                                   *local-variables*))
          (seq-expr (translate-expression backend (second (first args)))))
     (if (third args)
-        (let ((seqvar (gensym)))
+        (let ((seqvar (gensym "$G")))
           `(let ((,seqvar ,seq-expr))
              (if ,seqvar
                  (loop

@@ -32,28 +32,9 @@
   expr)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun parse-arguments/impl (str)
-  (let ((args nil))
-    (ppcre:do-matches-as-strings (bind "\\w*=\"\\w*\"" str)
-      (let ((eq-pos (position #\= bind)))
-        (push (intern (string-upcase (subseq bind 0 eq-pos)) :keyword)
-              args)
-        (push (subseq bind (+ eq-pos 2) (1- (length bind)))
-              args)))
-    (nreverse args)))
-
-(defun parse-arguments (str)
-  (ppcre:register-groups-bind (args) ("^{\\w*\\s*((?:\\s*\\w*=\"\\w*\")*)\\s*}$" str)
-    (parse-arguments/impl args)))
-
-(defun parse-name-and-arguments (str)
-  (ppcre:register-groups-bind (name args) ("^{\\w*\\s*([\\w-\\.]*)((?:\\s*\\w*=\"\\w*\")*)\\s*}$" str)
-    (cons name
-          (parse-arguments/impl args))))
-
 ;;;; closure template syntax
 ;;;; see http://code.google.com/intl/ru/closure/templates/docs/commands.html
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-mode toplevel (0)
   (:allowed :baseonly eol one-line-comment multi-line-comment))
@@ -68,6 +49,35 @@
 (define-mode multi-line-comment (20 :all)
   (:entry "/\\*")
   (:exit "\\*/"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; namespace tag
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun namespace-post-handler (item)
+  (list 'namespace
+        (string-trim #(#\Space #\Tab) (subseq (second item)
+                                              (length "{namespace")
+                                              (1- (length (second item)))))))
+
+(define-mode namespace (10 :baseonly)
+  (:special "{namespace\\s+[\\w\\.\\-]+\\s*}")
+  (:post-handler namespace-post-handler))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; template tag
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun parse-template-name (str)
+  (or (ppcre:register-groups-bind (name) ("^{template\\s+([\\w-]+)\\s*}$" str)
+        (list name))
+      (discard-parse-element))) 
+
+(define-mode template (10 :baseonly)
+  (:allowed :all)
+  (:entry "{template[^}]*}(?=.*{/template})")
+  (:entry-attribute-parser parse-template-name)
+  (:exit "{/template}"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; substition
@@ -98,30 +108,6 @@
   (:single "\\n"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; namespace tag
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun namespace-post-handler (item)
-  (list 'namespace
-        (string-trim #(#\Space #\Tab) (subseq (second item)
-                                              (length "{namespace")
-                                              (1- (length (second item)))))))
-
-(define-mode namespace (10 :baseonly)
-  (:special "{namespace\\s+[\\w\\.\\-]+\\s*}")
-  (:post-handler namespace-post-handler))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; template tag
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-mode template (10 :baseonly)
-  (:allowed :all)
-  (:entry "{template[^}]*}(?=.*{/template})")
-  (:entry-attribute-parser parse-name-and-arguments)
-  (:exit "{/template}"))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; literag tag
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -148,10 +134,9 @@
 ;;;; msg
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-mode msg (30 :all)
-  (:entry "{msg[^}]*}(?=.*{/msg})")
-  (:entry-attribute-parser parse-arguments)
-  (:exit "{/msg}"))
+;; (define-mode msg (30 :all)
+;;   (:entry "{msg[^}]*}(?=.*{/msg})")
+;;   (:exit "{/msg}"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; if
@@ -384,14 +369,14 @@
 ;;; css
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-mode css-tag (20 :all)
-  (:special "{css[^}]*}"))
-
-(wiki-parser:remake-lexer 'toplevel)
+;; (define-mode css-tag (20 :all)
+;;   (:special "{css[^}]*}"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; parse-template
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(wiki-parser:remake-lexer 'toplevel)
 
 (defmethod wiki-parser:parse ((markup (eql :closure-template.parser)) (obj string))
   (let* ((res (call-next-method markup (ppcre:regex-replace-all "\\s+" obj " ")))

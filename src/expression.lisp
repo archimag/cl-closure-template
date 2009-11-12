@@ -45,13 +45,6 @@
   (find ch #(#\Space #\Tab #\Newline)))
 
 
-(defun lispify-name (str)
-  (coerce (iter (for ch in-string str)
-                (when (upper-case-p ch)
-                  (collect #\-))
-                (collect (char-upcase ch)))
-          'string))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *infix-ops* 
@@ -141,43 +134,16 @@
     `(,(op exp) ,(butlast (rest exp)) ,(first (last exp)))
     exp))
 
-;;;; Tokenization: convert a string to a sequence of tokens
-      
-(defun string->infix (string &optional (start 0))
-  "Convert a string to a list of tokens."
-  (multiple-value-bind (token i) (parse-infix-token string start)
-    (cond ((null token) nil)
-          ((null i) (list token))
-          (t (cons token (string->infix string i))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Tokenization: convert a string to a sequence of tokens      
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun parse-infix-token (string start)
-  "Return the first token in string and the position after it, or nil."
-    (let* ((i (position-if-not #'whitespace? string :start start))
-           (ch (if i (char string i))))
-      (cond ((null i) (values nil nil))
-            ((find ch "+-~()[]{},") (values (intern (string ch)) (+ i 1)))
-            ;;((operator-char? ch) (parse-span string #'operator-char? i))
-            ((operator-char? ch) (parse-operator string i))
-            ((find ch "0123456789") (parse-integer string :start i :junk-allowed t))
-            ((symbol-char? ch) (parse-span string #'symbol-char? i))
-            ((string-delimiter-char? ch) (parse-string string (1+ i)))
-            (t (bad-expression "unexpected character: ~C" ch)))))
-
-(defun parse-span (string pred i)
-  (let ((j (position-if-not pred string :start i)))
-    (values (make-logic-symbol (subseq string i j)) j)))
-
-(defun parse-operator (string i)
-  (let ((j (position-if-not #'operator-char? string :start i)))
-    (values (intern (string-upcase (subseq string i j)))
-            j)))
-
-
-(defun parse-string (string i)
-  (let ((j (position #\' string :start i)))
-    (if j
-        (values (subseq string i j) (1+ j)))))
-
+(defun lispify-name (str)
+  (coerce (iter (for ch in-string str)
+                (when (upper-case-p ch)
+                  (collect #\-))
+                (collect (char-upcase ch)))
+          'string))
 
 (defparameter *possible-functions*
   '("isFirst"
@@ -200,11 +166,63 @@
                                            (mapcar #'lispify-name
                                                    (split-sequence:split-sequence #\.
                                                                                   (subseq string 1)))))
-        ((equal string "null") :nil)
+        ((equal string "null") nil)
+        ((equal string "true") t)
+        ((equal string "false") nil)
         ((equal string "all") :all)
         ((find string *possible-functions* :test #'string-equal) (intern (lispify-name string) :keyword))
         (t (bad-expression "Bad symbol: ~A" string))))
-            
+
+(defun parse-operator (string i)
+  (let ((j (position-if-not #'operator-char? string :start i)))
+    (values (intern (string-upcase (subseq string i j)))
+            j)))
+
+(defun parse-span (string pred i)
+  (let ((j (position-if-not pred string :start i)))
+    (values (make-logic-symbol (subseq string i j)) j)))
+
+(defun parse-string (string i)
+  (let ((j (position #\' string :start i)))
+    (if j
+        (values (subseq string i j) (1+ j)))))
+
+(defun parse-number (string &key (start 0))
+  (multiple-value-bind (i1 pos1) (parse-integer string :start start :junk-allowed t)
+    (if (and i1
+             (> (length string) pos1)
+             (char= (char string pos1) #\.))
+        (multiple-value-bind (i2 pos2) (parse-integer string :start (1+ pos1) :junk-allowed t)
+          (if i2
+              (values (read-from-string (format nil "~A.~A" i1 i2))
+                      pos2)
+              (values i1 pos1)))
+        (values i1 pos1))))
+
+
+(defun parse-infix-token (string start)
+  "Return the first token in string and the position after it, or nil."
+    (let* ((i (position-if-not #'whitespace? string :start start))
+           (ch (if i (char string i))))
+      (cond ((null i) (values nil nil))
+            ((find ch "+-~()[]{},") (values (intern (string ch)) (+ i 1)))
+            ((operator-char? ch) (parse-operator string i))
+            ((find ch "0123456789") (parse-number string :start i))
+            ((symbol-char? ch) (parse-span string #'symbol-char? i))
+            ((string-delimiter-char? ch) (parse-string string (1+ i)))
+            (t (bad-expression "unexpected character: ~C" ch)))))
+
+
+(defun string->infix (string &optional (start 0))
+  "Convert a string to a list of tokens."
+  (multiple-value-bind (token i) (parse-infix-token string start)
+    (cond ((null token) nil)
+          ((null i) (list token))
+          (t (cons token (string->infix string i))))))            
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; public interface
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun parse-expression (str)
   (unless str

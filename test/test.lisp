@@ -26,6 +26,16 @@
   (ensure-same "Hello world"
                (parse-expression "'Hello world'")))
 
+(addtest (expression-parser-test)
+  integer-1
+  (ensure-same 5
+               (parse-expression "5")))
+
+(addtest (expression-parser-test)
+  float-1
+  (ensure-same 3.14
+               (parse-expression "3.14")))
+
 ;;; vars
 
 (addtest (expression-parser-test)

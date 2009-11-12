@@ -29,7 +29,7 @@
   (nconc (subseq sequence 0 start) (list new)
          (subseq sequence (+ start length))))
 
-(defun operator-char? (x) (find x "<=>&^|*/,%!"))
+(defun operator-char? (x) (find x "<=>&^|*/,%!?:"))
 
 (defun symbol-char? (x)
   (or (alphanumericp x)
@@ -83,25 +83,31 @@
 
 (defun reduce-infix (infix)
   "Find the highest-precedence operator in INFIX and reduce accordingly."
-  (if (eql (first infix) '-)
-      (replace-subseq infix 0 2
-                      (list '-
-                            (second infix)))
-      (dolist (ops *infix-ops* (bad-expression "Bad syntax for infix expression: ~S" infix))
-        (let* ((pos (position-if #'(lambda (i) (assoc i ops)) infix
-                                 :from-end (eq (op-type (first ops)) 'MATCH)))
-               (op (when pos (assoc (elt infix pos) ops))))
-          (when pos
-            (RETURN
-              (case (op-type op)
-                (MATCH (reduce-matching-op op pos infix))
-                (UNARY (replace-subseq infix pos 2 
-                                       (list (op-name op) 
-                                             (elt infix (+ pos 1)))))
-                (BINARY (replace-subseq infix (- pos 1) 3
-                                        (list (op-name op)
-                                              (elt infix (- pos 1)) 
-                                              (elt infix (+ pos 1))))))))))))
+  (cond
+    ((eql (first infix) '-) (replace-subseq infix 0 2
+                                            (list '-
+                                                  (second infix))))
+;;     ((find '? infix) (let ((pos (position '? infix)))
+;;                        (replace-subseq infix (1- pos) (+ pos 4)
+;;                                        (list 'if
+;;                                              (elt infix (1- pos))
+;;                                              (elt infix (1+ pos))
+;;                                              (elt infix (+ 3 pos))))))
+    (t (dolist (ops *infix-ops* (bad-expression "Bad syntax for infix expression: ~S" infix))
+         (let* ((pos (position-if #'(lambda (i) (assoc i ops)) infix
+                                  :from-end (eq (op-type (first ops)) 'MATCH)))
+                (op (when pos (assoc (elt infix pos) ops))))
+           (when pos
+             (RETURN
+               (case (op-type op)
+                 (MATCH (reduce-matching-op op pos infix))
+                 (UNARY (replace-subseq infix pos 2 
+                                        (list (op-name op) 
+                                              (elt infix (+ pos 1)))))
+                 (BINARY (replace-subseq infix (- pos 1) 3
+                                         (list (op-name op)
+                                               (elt infix (- pos 1)) 
+                                               (elt infix (+ pos 1)))))))))))))
 
 
 (defun reduce-matching-op (op pos infix)

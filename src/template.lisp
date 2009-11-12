@@ -90,13 +90,13 @@
   (:single "{nil}"))
 
 (define-mode carriage-return (20 :all)
-  (:single "{\\\r}"))
+  (:single "{\\\\r}"))
 
 (define-mode line-feed (20 :all)
-  (:single "{\\\n}"))
+  (:single "{\\\\n}"))
 
 (define-mode tab (20 :all)
-  (:single "{\\\t}"))
+  (:single "{\\\\t}"))
 
 (define-mode left-brace (20 :all)
   (:single "{lb}"))

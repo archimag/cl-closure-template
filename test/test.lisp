@@ -59,6 +59,20 @@
 
 (deftestsuite template-parser-test (closure-template-test) ())
 
+;;;; substitions
+
+(addtest (template-parser-test)
+  substition-1
+  (ensure-same '(closure-template.parser:template ("substitions")
+                 closure-template.parser:space-tag
+                 closure-template.parser:emptry-string
+                 closure-template.parser:carriage-return
+                 closure-template.parser:line-feed
+                 closure-template.parser:tab
+                 closure-template.parser:left-brace
+                 closure-template.parser:right-brace)
+               (parse-single-template "{template substitions}{sp}{nil}{\\r}{\\n}{\\t}{lb}{rb}{/template}")))
+
 ;;;; print
 
 (addtest (template-parser-test)

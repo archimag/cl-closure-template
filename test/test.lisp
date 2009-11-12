@@ -30,29 +30,29 @@
 
 (addtest (expression-parser-test)
   var-1
-  (ensure-same '(:variable "var")
+  (ensure-same '(:variable "VAR")
                (parse-expression " $var ")))
 
 (addtest (expression-parser-test)
   var-2
-  (ensure-same '(:variable "x" "y")
+  (ensure-same '(:variable "X" "Y")
                (parse-expression "$x.y")))
 
 ;;;; operators
 
 (addtest (expression-parser-test)
   operator--unary
-  (ensure-same '(- (:variable "x"))
+  (ensure-same '(- (:variable "X"))
                (parse-expression "-$x")))
 
 (addtest (expression-parser-test)
   operator-not
-  (ensure-same '(not (:variable "x"))
+  (ensure-same '(not (:variable "X"))
                (parse-expression "not $x")))
 
 (addtest (expression-parser-test)
   operator-+-1
-  (ensure-same '(+ (:variable "x") (:variable "y"))
+  (ensure-same '(+ (:variable "X") (:variable "Y"))
                (parse-expression " $x + $y ")))
 
 (addtest (expression-parser-test)
@@ -62,74 +62,74 @@
 
 (addtest (expression-parser-test)
   operator--
-  (ensure-same '(- (:variable "x") (:variable "y"))
+  (ensure-same '(- (:variable "X") (:variable "Y"))
                (parse-expression " $x - $y ")))
 
 (addtest (expression-parser-test)
   operator-*
-  (ensure-same '(* (:variable "x") (:variable "y"))
+  (ensure-same '(* (:variable "X") (:variable "Y"))
                (parse-expression " $x * $y ")))
 
 (addtest (expression-parser-test)
   operator-/
-  (ensure-same '(/ (:variable "x") (:variable "y"))
+  (ensure-same '(/ (:variable "X") (:variable "Y"))
                (parse-expression " $x/$y ")))
 
 (addtest (expression-parser-test)
   operator-%
-  (ensure-same '(rem (:variable "x") (:variable "y"))
+  (ensure-same '(rem (:variable "X") (:variable "Y"))
                (parse-expression " $x % $y ")))
 
 (addtest (expression-parser-test)
   operator->
-  (ensure-same '(> (:variable "x") (:variable "y"))
+  (ensure-same '(> (:variable "X") (:variable "Y"))
                (parse-expression " $x > $y ")))
 
 (addtest (expression-parser-test)
   operator-<
-  (ensure-same '(< (:variable "x") (:variable "y"))
+  (ensure-same '(< (:variable "X") (:variable "Y"))
                (parse-expression " $x < $y ")))
 
 (addtest (expression-parser-test)
   operator->=
-  (ensure-same '(>= (:variable "x") (:variable "y"))
+  (ensure-same '(>= (:variable "X") (:variable "Y"))
                (parse-expression " $x >= $y ")))
 
 (addtest (expression-parser-test)
   operator-<=
-  (ensure-same '(<= (:variable "x") (:variable "y"))
+  (ensure-same '(<= (:variable "X") (:variable "Y"))
                (parse-expression " $x <= $y ")))
 
 (addtest (expression-parser-test)
   operator-==
-  (ensure-same '(equal (:variable "x") (:variable "y"))
+  (ensure-same '(equal (:variable "X") (:variable "Y"))
                (parse-expression " $x == $y ")))
 
 (addtest (expression-parser-test)
   operator-!=
-  (ensure-same '(closure-template.parser.expression:not-equal (:variable "x") (:variable "y"))
+  (ensure-same '(closure-template.parser.expression:not-equal (:variable "X") (:variable "Y"))
                (parse-expression " $x != $y ")))
 
 (addtest (expression-parser-test)
   operator-and
-  (ensure-same '(and (:variable "x") (:variable "y"))
+  (ensure-same '(and (:variable "X") (:variable "Y"))
                (parse-expression " $x and $y ")))
 
 (addtest (expression-parser-test)
   operator-or
-  (ensure-same '(or (:variable "x") (:variable "y"))
+  (ensure-same '(or (:variable "X") (:variable "Y"))
                (parse-expression " $x or $y ")))
 
 ;;;; functions
 
 (addtest (expression-parser-test)
   expression-3
-  (ensure-same '(:min (:variable "x") (:variable "y"))
+  (ensure-same '(:min (:variable "X") (:variable "Y"))
                (parse-expression "min($x, $y)")))
 
 (addtest (expression-parser-test)
   expression-4
-  (ensure-same '(:min (:variable "x") (:max 5 (:variable "y")))
+  (ensure-same '(:min (:variable "X") (:max 5 (:variable "Y")))
                (parse-expression "min($x, max(5, $y))")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -160,7 +160,7 @@
 (addtest (template-parser-test)
   print-1
   (ensure-same '(closure-template.parser:template ("helloName") "Hello "
-                 (closure-template.parser:print-tag (:VARIABLE "name")))
+                 (closure-template.parser:print-tag (:VARIABLE "NAME")))
                (parse-single-template "{template helloName}Hello {$name}{/template}")))
 
 (addtest (template-parser-test)
@@ -183,15 +183,15 @@
   if-1
   (ensure-same '(closure-template.parser:template ("if-test")
                  (closure-template.parser:if-tag
-                  ((:variable "x") ("Hello "
-                                    (closure-template.parser:print-tag (:variable "x"))))))
+                  ((:variable "X") ("Hello "
+                                    (closure-template.parser:print-tag (:variable "X"))))))
                (parse-single-template "{template if-test}{if $x}Hello {$x}{/if}{/template}")))
 
 (addtest (template-parser-test)
   if-2
   (ensure-same '(closure-template.parser:template ("if-test")
                  (closure-template.parser:if-tag
-                  ((:variable "x") ("Hello " (closure-template.parser:print-tag (:variable "x"))))
+                  ((:variable "X") ("Hello " (closure-template.parser:print-tag (:variable "X"))))
                   (t ("Hello world"))))
                (parse-single-template "{template if-test}{if $x}Hello {$x}{else}Hello world{/if}{/template}")))
 
@@ -199,8 +199,8 @@
   if-3
   (ensure-same '(closure-template.parser:template ("if-test")
                  (closure-template.parser:if-tag
-                  ((:variable "x") ("Hello " (closure-template.parser:print-tag (:variable "x"))))
-                  ((:variable "y") ("Hello " (closure-template.parser:print-tag (:variable "y"))))
+                  ((:variable "X") ("Hello " (closure-template.parser:print-tag (:variable "X"))))
+                  ((:variable "Y") ("Hello " (closure-template.parser:print-tag (:variable "Y"))))
                   (t ("Hello world"))))
                (parse-single-template "{template if-test}{if $x}Hello {$x}{elseif $y}Hello {$y}{else}Hello world{/if}{/template}")))
 
@@ -208,9 +208,9 @@
   if-4
   (ensure-same '(closure-template.parser:template ("if-test")
                  (closure-template.parser:if-tag
-                  ((:variable "x") ("Hello " (closure-template.parser:print-tag (:variable "x"))))
-                  ((:variable "y") ("Hello " (closure-template.parser:print-tag (:variable "y"))))
-                  ((:variable "z") ("By!"))
+                  ((:variable "X") ("Hello " (closure-template.parser:print-tag (:variable "X"))))
+                  ((:variable "Y") ("Hello " (closure-template.parser:print-tag (:variable "Y"))))
+                  ((:variable "Z") ("By!"))
                   (t ("Hello world"))))
                (parse-single-template "{template if-test}{if $x}Hello {$x}{elseif $y}Hello {$y}{elseif $z}By!{else}Hello world{/if}{/template}")))
 
@@ -219,7 +219,7 @@
 (addtest (template-parser-test)
   switch-1
   (ensure-same '(closure-template.parser:template ("switch-test")
-                 (closure-template.parser:switch-tag (:variable "x")
+                 (closure-template.parser:switch-tag (:variable "X")
                   nil
                   ((1) ("hello world"))
                   ((2 3 4) ("by-by"))))
@@ -228,7 +228,7 @@
 (addtest (template-parser-test)
   switch-2
   (ensure-same '(closure-template.parser:template ("switch-test")
-                 (closure-template.parser:switch-tag (:variable "x")
+                 (closure-template.parser:switch-tag (:variable "X")
                   ("default value")
                   ((1) ("hello world"))
                   ((2 3 4) ("by-by"))))
@@ -239,8 +239,8 @@
 (addtest (template-parser-test)
   foreach-1
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:foreach ((:variable "x") (:variable "y" "foo"))
-                  ((closure-template.parser:print-tag (:variable "x")))))
+                 (closure-template.parser:foreach ((:variable "X") (:variable "Y" "FOO"))
+                  ((closure-template.parser:print-tag (:variable "X")))))
                (parse-single-template "{template test}{foreach $x in $y.foo }{$x}{/foreach}{/template}")))
 
 ;;;; for
@@ -248,19 +248,19 @@
 (addtest (template-parser-test)
   for-1
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:for-tag ((:variable "x") (:range 10)) " ! "))
+                 (closure-template.parser:for-tag ((:variable "X") (:range 10)) " ! "))
                (parse-single-template "{template test}{for $x in range(10)} ! {/for}{/template}")))
 
 (addtest (template-parser-test)
   for-2
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:for-tag ((:variable "x") (:range 4 10)) " ! "))
+                 (closure-template.parser:for-tag ((:variable "X") (:range 4 10)) " ! "))
                (parse-single-template "{template test}{for $x in range(4, 10)} ! {/for}{/template}")))
 
 (addtest (template-parser-test)
   for-3
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:for-tag ((:variable "x") (:range 4 10 2)) " ! "))
+                 (closure-template.parser:for-tag ((:variable "X") (:range 4 10 2)) " ! "))
                (parse-single-template "{template test}{for $x in range(4, 10, 2)} ! {/for}{/template}")))
 
 
@@ -269,24 +269,24 @@
 (addtest (template-parser-test)
   call-1
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:call "hello-name" (:variable "x")))
+                 (closure-template.parser:call "hello-name" (:variable "X")))
                (parse-single-template "{template test}{call hello-name data=\"$x\" /}{/template}")))
 
 (addtest (template-parser-test)
   call-2
   (ensure-same '(closure-template.parser:template ("test")
                  (closure-template.parser:call "hello-name" nil
-                  (closure-template.parser:param (:variable "name") (:variable "x"))))
+                  (closure-template.parser:param (:variable "NAME") (:variable "X"))))
                (parse-single-template "{template test}{call hello-name}{param name: $x /}{/call}{/template}")))
 
 
 (addtest (template-parser-test)
   call-3
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:call "hello-name" (:variable "data")
-                  (closure-template.parser:param (:variable "a") (:variable "x"))
-                  (closure-template.parser:param (:variable "b") nil
-                   "Hello " (closure-template.parser:print-tag (:variable "y")))))
+                 (closure-template.parser:call "hello-name" (:variable "DATA")
+                  (closure-template.parser:param (:variable "A") (:variable "X"))
+                  (closure-template.parser:param (:variable "B") nil
+                   "Hello " (closure-template.parser:print-tag (:variable "Y")))))
                (parse-single-template "{template test}{call hello-name data=\"$data\"}{param a: $x /}{param b}Hello {$y}{/param} {/call}{/template}")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -308,6 +308,25 @@
                (progn
                 (compile-template :common-lisp-backend
                                   "{template hello-world}Hello world{/template}")
+                (funcall (find-symbol "HELLO-WORLD" :closute-template.test.templates)))))
+
+;;;; comment
+
+(addtest (common-lisp-backend-test)
+  comment-1
+  (ensure-same "Hello world"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template hello-world}//Hello world
+Hello world{/template}")
+                (funcall (find-symbol "HELLO-WORLD" :closute-template.test.templates)))))
+
+(addtest (common-lisp-backend-test)
+  comment-2
+  (ensure-same "Hello world"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template hello-world}/*Hello world*/Hello world{/template}")
                 (funcall (find-symbol "HELLO-WORLD" :closute-template.test.templates)))))
 
 ;;;; calculate

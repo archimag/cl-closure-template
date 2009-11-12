@@ -44,6 +44,14 @@
 (defun whitespace? (ch)
   (find ch #(#\Space #\Tab #\Newline)))
 
+
+(defun lispify-name (str)
+  (coerce (iter (for ch in-string str)
+                (when (upper-case-p ch)
+                  (collect #\-))
+                (collect (char-upcase ch)))
+          'string))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *infix-ops* 
@@ -171,14 +179,31 @@
         (values (subseq string i j) (1+ j)))))
 
 
+(defparameter *possible-functions*
+  '("isFirst"
+    "isLast"
+    "index"
+    "hasData"
+    "length"
+    "round"
+    "floor"
+    "ceiling"
+    "min"
+    "max"
+    "randomInt"
+    "range"))
+
 (defun make-logic-symbol (string)
   "Convert string to symbol, preserving case, except for AND/OR/NOT/FORALL/EXISTS."
   (cond ((find string '(and or not) :test #'string-equal))
         ((char= #\$ (char string 0)) (cons :variable
-                                           (split-sequence:split-sequence #\.
-                                                                          (subseq string 1))))
+                                           (mapcar #'lispify-name
+                                                   (split-sequence:split-sequence #\.
+                                                                                  (subseq string 1)))))
         ((equal string "null") :nil)
-        (t (intern (string-upcase string) :keyword))))
+        ((equal string "all") :all)
+        ((find string *possible-functions* :test #'string-equal) (intern (lispify-name string) :keyword))
+        (t (bad-expression "Bad symbol: ~A" string))))
             
 
 (defun parse-expression (str)

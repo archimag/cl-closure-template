@@ -27,19 +27,29 @@
   (translate-item backend
                   (parse-template template)))
 
+(defparameter *substitions* '(closure-template.parser:space-tag
+                              closure-template.parser:emptry-string
+                              closure-template.parser:carriage-return
+                              closure-template.parser:line-feed
+                              closure-template.parser:tab
+                              closure-template.parser:left-brace
+                              closure-template.parser:right-brace))
+
 (defmethod translate-item (backend (item cons))
   (cond
-    ((symbolp (car item)) (translate-named-item backend
-                                                (car item)
-                                                (cdr item)))
+    ((and (symbolp (car item))
+          (not (find (car item)
+                     *substitions*))) (translate-named-item backend
+                                                            (car item)
+                                                            (cdr item)))
     ((= (length item) 1) (translate-item backend
                                          (car item)))
     (t (cons 'progn
-            (iter (for i in item)
-                  (let ((c (translate-item backend
-                                         i)))
-                    (when c
-                      (collect c))))))))
+             (iter (for i in item)
+                   (let ((c (translate-item backend
+                                            i)))
+                     (when c
+                       (collect c))))))))
 
 (defmethod translate-item (backend (item symbol))
   nil)

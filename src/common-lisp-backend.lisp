@@ -64,6 +64,20 @@
   (list 'write-template-string
         expr))
 
+(defmethod translate-item ((backend common-lisp-backend) (symbol symbol))
+  (backend-print backend
+                 (case symbol
+                   (closure-template.parser:space-tag (string #\Space))
+                   (closure-template.parser:emptry-string "")
+                   (closure-template.parser:carriage-return (string #\Return))
+                   (closure-template.parser:line-feed (string #\Newline))
+                   (closure-template.parser:tab (string #\Tab))
+                   (closure-template.parser:left-brace "{")
+                   (closure-template.parser:right-brace "}")
+                   (otherwise (call-next-method)))))
+
+
+
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:namespace)) args)
   (let ((*package* (if (car args)
                        (make-template-package (car args))

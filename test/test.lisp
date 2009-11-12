@@ -212,6 +212,8 @@
                 (make-template-package :closute-template.test.templates)))
   (:teardown (delete-package :closute-template.test.templates)))
 
+;;;; simple
+
 (addtest (common-lisp-backend-test)
   hello-world
   (ensure-same "Hello world"
@@ -219,6 +221,18 @@
                 (compile-template :common-lisp-backend
                                   "{template hello-world}Hello world{/template}")
                 (funcall (find-symbol "HELLO-WORLD" :closute-template.test.templates)))))
+
+;;;; substitions
+
+(addtest (common-lisp-backend-test)
+  substition-1
+  (ensure-same (coerce #(#\Space #\Return #\Newline #\Tab #\{ #\}) 'string)
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template substitions}{sp}{nil}{\\r}{\\n}{\\t}{lb}{rb}{/template}")
+                 (funcall (find-symbol "SUBSTITIONS" :closute-template.test.templates)))))
+
+;;;; print
             
 (addtest (common-lisp-backend-test)
   hello-name

@@ -90,6 +90,9 @@
            (declare (ignore $data$))
            ,body))))
 
+(defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:literal)) args)
+  `(write-template-string ,(car args)))
+
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:if-tag)) args)
   (cond
@@ -163,9 +166,30 @@
         do ,(translate-item backend
                             (cdr args)))))
 
-(defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:literal)) args)
-  `(write-template-string ,(car args)))
 
+(defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:call)) args)
+  (let ((fun-name (or (find-symbol (string-upcase (first args)))
+                      (error "Unknow template ~A" (first args)))))
+    `(let ((data ,(cond
+                   ((eql (second args) :all) '$data$)
+                   ((second args) (translate-expression backend
+                                                        (second args))))))
+       ,@(iter (for param in (cddr args))
+               (collect (list 'push
+                              (if (third param)
+                                  (translate-expression backend
+                                                        (third param))
+                                  `(with-output-to-string (*template-output*)
+                                     ,(translate-item backend
+                                                      (cdddr param))))
+                              'data))
+               (collect (list 'push
+                              (intern (string-upcase (second (second param))) :keyword)
+                              'data)))
+       ,(backend-print backend
+                       (list fun-name
+                             'data)))))
+                      
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; translate and compile template methods

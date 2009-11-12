@@ -360,10 +360,9 @@
   (if (and (= (length item) 2)
            (stringp (second item)))
       (let ((name-and-data (parse-call-name-and-data (second item))))
-        (unless (second name-and-data)
-          (discard-parse-element))
-        (cons 'call
-              name-and-data))
+        (list 'call
+              (first name-and-data)
+              (second name-and-data)))
       (cons 'call
             (concatenate 'list
                          (second item)

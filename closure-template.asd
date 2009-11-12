@@ -13,7 +13,7 @@
 
 
 (defsystem closure-template
-  :depends-on (#:wiki-parser #:parenscript #:split-sequence)
+  :depends-on (#:wiki-parser #:split-sequence)
   :components ((:module "src"
                         :components ((:file "packages")
                                      (:file "expression" :depends-on ("packages"))

@@ -331,6 +331,46 @@
                 (funcall (find-symbol "TEST" :closute-template.test.templates)
                          '(:from 1 :to 10 :by 3)))))
 
+;;;; call
+
+(addtest (common-lisp-backend-test)
+  call-1
+  (ensure-same "Hello world"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template hello-world}Hello world{/template}
+{template test}{call hello-world /}{/template}")
+                (funcall (find-symbol "TEST" :closute-template.test.templates)))))
+
+(addtest (common-lisp-backend-test)
+  call-2
+  (ensure-same "Hello Andrey"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template hello-name}Hello {$name}{/template}
+{template test}{call hello-name}{param name: 'Andrey'/}{/call}{/template}")
+                (funcall (find-symbol "TEST" :closute-template.test.templates)))))
+
+(addtest (common-lisp-backend-test)
+  call-3
+  (ensure-same "Hello Andrey"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template hello-name}Hello {$name}{/template}
+{template test}{call hello-name}{param name}Andrey{/param}{/call}{/template}")
+                (funcall (find-symbol "TEST" :closute-template.test.templates)))))
+
+
+(addtest (common-lisp-backend-test)
+  call-4
+  (ensure-same "Hello Masha"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template hello-name}Hello {$name}{/template}
+{template test}{call hello-name data=\"all\"/}{/template}")
+                (funcall (find-symbol "TEST" :closute-template.test.templates)
+                         '(:name "Masha")))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Run all tests
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

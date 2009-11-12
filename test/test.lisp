@@ -130,6 +130,18 @@
   (ensure-same '(or (:variable "X") (:variable "Y"))
                (parse-expression " $x or $y ")))
 
+(addtest (expression-parser-test)
+  |operator-?:-ternary|
+  (ensure-same '(:max 2
+                 (if (:variable "X")
+                     (:min (:variable "X")
+                           (if (:variable "Y")
+                               3
+                               (+ 5 4))
+                           6)
+                     4))
+               (parse-expression "max(2, $x ? min($x, $y ? 3 : 5 + 4, 6) : 4)")))
+
 ;;;; functions
 
 (addtest (expression-parser-test)

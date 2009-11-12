@@ -51,9 +51,14 @@
                (parse-expression "not $x")))
 
 (addtest (expression-parser-test)
-  operator-+
+  operator-+-1
   (ensure-same '(+ (:variable "x") (:variable "y"))
                (parse-expression " $x + $y ")))
+
+(addtest (expression-parser-test)
+  operator-+-2
+  (ensure-same '(+ 2 2)
+               (parse-expression "2 + 2")))
 
 (addtest (expression-parser-test)
   operator--
@@ -153,10 +158,16 @@
 ;;;; print
 
 (addtest (template-parser-test)
-  hello-name-template-1
+  print-1
   (ensure-same '(closure-template.parser:template ("helloName") "Hello "
                  (closure-template.parser:print-tag (:VARIABLE "name")))
                (parse-single-template "{template helloName}Hello {$name}{/template}")))
+
+(addtest (template-parser-test)
+  print-2
+  (ensure-same '(closure-template.parser:template ("test") 
+                 (closure-template.parser:print-tag (+ 2 2)))
+               (parse-single-template "{template test}{2 + 2}{/template}")))
 
 ;;;; literal
 
@@ -298,6 +309,33 @@
                 (compile-template :common-lisp-backend
                                   "{template hello-world}Hello world{/template}")
                 (funcall (find-symbol "HELLO-WORLD" :closute-template.test.templates)))))
+
+;;;; calculate
+
+(addtest (common-lisp-backend-test)
+  calculate-1
+  (ensure-same "20"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template calculate}{(2 + 3) * 4}{/template}")
+                (funcall (find-symbol "CALCULATE" :closute-template.test.templates)))))
+
+(addtest (common-lisp-backend-test)
+  calculate-2
+  (ensure-same "20"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template calculate}{(2 + 3) * 4}{/template}")
+                (funcall (find-symbol "CALCULATE" :closute-template.test.templates)))))
+
+
+(addtest (common-lisp-backend-test)
+  calculate-3
+  (ensure-same "2"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template calculate}{(20 - 3) %  5}{/template}")
+                (funcall (find-symbol "CALCULATE" :closute-template.test.templates)))))
 
 ;;;; substitions
 

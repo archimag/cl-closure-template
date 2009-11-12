@@ -120,7 +120,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun print-tag-post-handler (obj)
-  (or (ppcre:register-groups-bind (expr) ("^{(?:print\\s+)?([^\\s}]+)}$" (second obj))
+  (or (ppcre:register-groups-bind (expr) ("^{(?:print\\s+)?(.+)}$" (second obj))
         (list (car obj)
               (parse-expr-or-discard expr)))
       (discard-parse-element)))

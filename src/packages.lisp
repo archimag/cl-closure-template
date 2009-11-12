@@ -7,20 +7,20 @@
 
 
 (defpackage #:closure-template.parser.expression
-  (:use #:cl)
+  (:use #:cl #:iter)
   (:export #:parse-expression
-           #:bad-expression-condition))
+           #:bad-expression-condition
+           #:not-equal))
 
 (defpackage #:closure-template.parser
   (:use #:cl #:iter #:closure-template.parser.expression)
   (:import-from #:wiki-parser #:define-mode #:remake-lexer)
   (:export #:parse-template))
 
-
 (defpackage #:closure-template
   (:use #:cl #:iter)
   (:import-from #:closure-template.parser #:parse-template)
-  (:import-from #:closure-template.parser.expression #:parse-expression)
+  (:import-from #:closure-template.parser.expression #:parse-expression #:not-equal)
   (:export #:parse-template
            #:parse-expression
            #:translate-template

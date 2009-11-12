@@ -19,15 +19,103 @@
 
 (deftestsuite expression-parser-test (closure-template-test) ())
 
+;;;; literal
+
 (addtest (expression-parser-test)
-  expression-1
+  string-1
+  (ensure-same "Hello world"
+               (parse-expression "'Hello world'")))
+
+;;; vars
+
+(addtest (expression-parser-test)
+  var-1
   (ensure-same '(:variable "var")
                (parse-expression " $var ")))
 
 (addtest (expression-parser-test)
-  expression-2
+  var-2
+  (ensure-same '(:variable "x" "y")
+               (parse-expression "$x.y")))
+
+;;;; operators
+
+(addtest (expression-parser-test)
+  operator--unary
+  (ensure-same '(- (:variable "x"))
+               (parse-expression "-$x")))
+
+(addtest (expression-parser-test)
+  operator-not
+  (ensure-same '(not (:variable "x"))
+               (parse-expression "not $x")))
+
+(addtest (expression-parser-test)
+  operator-+
   (ensure-same '(+ (:variable "x") (:variable "y"))
                (parse-expression " $x + $y ")))
+
+(addtest (expression-parser-test)
+  operator--
+  (ensure-same '(- (:variable "x") (:variable "y"))
+               (parse-expression " $x - $y ")))
+
+(addtest (expression-parser-test)
+  operator-*
+  (ensure-same '(* (:variable "x") (:variable "y"))
+               (parse-expression " $x * $y ")))
+
+(addtest (expression-parser-test)
+  operator-/
+  (ensure-same '(/ (:variable "x") (:variable "y"))
+               (parse-expression " $x/$y ")))
+
+(addtest (expression-parser-test)
+  operator-%
+  (ensure-same '(rem (:variable "x") (:variable "y"))
+               (parse-expression " $x % $y ")))
+
+(addtest (expression-parser-test)
+  operator->
+  (ensure-same '(> (:variable "x") (:variable "y"))
+               (parse-expression " $x > $y ")))
+
+(addtest (expression-parser-test)
+  operator-<
+  (ensure-same '(< (:variable "x") (:variable "y"))
+               (parse-expression " $x < $y ")))
+
+(addtest (expression-parser-test)
+  operator->=
+  (ensure-same '(>= (:variable "x") (:variable "y"))
+               (parse-expression " $x >= $y ")))
+
+(addtest (expression-parser-test)
+  operator-<=
+  (ensure-same '(<= (:variable "x") (:variable "y"))
+               (parse-expression " $x <= $y ")))
+
+(addtest (expression-parser-test)
+  operator-==
+  (ensure-same '(equal (:variable "x") (:variable "y"))
+               (parse-expression " $x == $y ")))
+
+(addtest (expression-parser-test)
+  operator-!=
+  (ensure-same '(closure-template.parser.expression:not-equal (:variable "x") (:variable "y"))
+               (parse-expression " $x != $y ")))
+
+(addtest (expression-parser-test)
+  operator-and
+  (ensure-same '(and (:variable "x") (:variable "y"))
+               (parse-expression " $x and $y ")))
+
+(addtest (expression-parser-test)
+  operator-or
+  (ensure-same '(or (:variable "x") (:variable "y"))
+               (parse-expression " $x or $y ")))
+
+;;;; functions
 
 (addtest (expression-parser-test)
   expression-3
@@ -38,17 +126,6 @@
   expression-4
   (ensure-same '(:min (:variable "x") (:max 5 (:variable "y")))
                (parse-expression "min($x, max(5, $y))")))
-
-
-(addtest (expression-parser-test)
-  expression-5
-  (ensure-same "Hello world"
-               (parse-expression "'Hello world'")))
-
-(addtest (expression-parser-test)
-  expression-6
-  (ensure-same '(:variable "x" "y")
-               (parse-expression "$x.y")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; template parser tests

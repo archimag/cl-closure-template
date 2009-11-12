@@ -37,16 +37,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-mode toplevel (0)
-  (:allowed :baseonly eol one-line-comment multi-line-comment))
+  (:allowed :baseonly))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; comment
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-mode one-line-comment (20 :all)
-  (:special "\\n//[^\\n]*(?=\\n)"))
-
-(define-mode multi-line-comment (20 :all)
+(define-mode comment (0 :all)
+  (:special "\\s+//[^\\n]*(?=\\n)"
+            "^//[^\\n]*(?=\\n)")
   (:entry "/\\*")
   (:exit "\\*/"))
 
@@ -104,8 +103,8 @@
 (define-mode right-brace (20 :all)
   (:single "{rb}"))
 
-(define-mode eol (30 :all)
-  (:single "\\n"))
+;; (define-mode eol (30 :all)
+;;   (:single "\\n"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; literag tag
@@ -378,8 +377,16 @@
 
 (wiki-parser:remake-lexer 'toplevel)
 
+(defun remove-whitespaces (obj)
+  (typecase obj
+    (string (ppcre:regex-replace-all "\\s{2,}"  (remove #\Newline obj) " "))
+    (cons (iter (for item in obj)
+                (collect (remove-whitespaces item))))
+    (otherwise obj)))
+
 (defmethod wiki-parser:parse ((markup (eql :closure-template.parser)) (obj string))
-  (let* ((res (call-next-method markup (ppcre:regex-replace-all "\\s+" obj " ")))
+  (remove-whitespaces
+  (let* ((res (call-next-method markup obj))
          (namespace (iter (for item in res)
                           (finding (second item)
                                    such-that (and (consp item)
@@ -390,7 +397,7 @@
                               (collect item)))))
     (list* 'namespace
            namespace
-           templates)))
+           templates))))
            
 (defun parse-template (obj)
   (wiki-parser:parse :closure-template.parser obj))

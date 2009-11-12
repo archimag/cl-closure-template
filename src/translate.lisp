@@ -11,7 +11,9 @@
 
 (defgeneric translate-item (backend item))
 
-(defgeneric translate-named-item (backend item args))
+(defgeneric translate-named-item (backend item args)
+  (:method(backend item args)))
+   
 
 (defgeneric backend-print (backend expr))
 

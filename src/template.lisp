@@ -27,7 +27,7 @@
   (unless (and (consp expr)
                (eql :variable (car expr))
                (= (length expr) 2)
-               (stringp (second expr)))
+               (keywordp (second expr)))
     (discard-parse-element))
   expr)
 

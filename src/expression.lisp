@@ -29,13 +29,6 @@
 ;;;; Tokenization: convert a string to a sequence of tokens      
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun lispify-name (str)
-  (coerce (iter (for ch in-string str)
-                (when (upper-case-p ch)
-                  (collect #\-))
-                (collect (char-upcase ch)))
-          'string))
-
 (defparameter *possible-functions*
   '("isFirst" "isLast" "index"
     "hasData"
@@ -46,18 +39,28 @@
     "min" "max"
     "range"))
 
+(defun lispify-name (str)
+  (intern (coerce (iter (for ch in-string str)
+                        (when (upper-case-p ch)
+                          (collect #\-))
+                        (collect (char-upcase ch)))
+                  'string)
+          :keyword))
+
 (defun make-expression-symbol (string)
   "Convert string to symbol, preserving case, except for AND/OR/NOT/FORALL/EXISTS."
   (cond ((find string '(and or not) :test #'string-equal))
-        ((char= #\$ (char string 0)) (cons :variable
-                                           (mapcar #'lispify-name
-                                                   (split-sequence:split-sequence #\.
-                                                                                  (subseq string 1)))))
+        ((char= #\$ (char string 0)) (list :variable
+                                           (lispify-name (subseq string 1))))
+        ((char= #\. (char string 0)) (list :dot
+                                           (if (not (find-if-not #'digit-char-p string :start 1))
+                                               (parse-integer string :start 1)
+                                               (lispify-name (subseq string 1)))))
         ((equal string "null") :nil)
         ((equal string "true") :t)
         ((equal string "false") :nil)
         ((equal string "all") :all)
-        ((find string *possible-functions* :test #'string-equal) (intern (lispify-name string) :keyword))
+        ((find string *possible-functions* :test #'string-equal) (lispify-name string))
         (t (bad-expression "Bad symbol: ~A" string))))
 
 (defun operator-char-p (x)
@@ -94,9 +97,14 @@
 
 (defun symbol-char-p (x)
   (or (alphanumericp x)
-      (find x "$.")))
+      (find x "$")))
 
 (defun string-delimiter-char-p (x) (char= x #\'))
+
+(defun parse-var (string i)
+  (let ((j (position-if-not #'alphanumericp string :start (1+ i))))
+    (values (make-expression-symbol (subseq string i j)) j)))
+
 
 (defun parse-infix-token (string start)
   "Return the first token in string and the position after it, or nil."
@@ -106,6 +114,8 @@
           ((find ch "+-~()[]{},") (values (intern (string ch)) (+ i 1)))
           ((operator-char-p ch) (parse-operator string i))
           ((digit-char-p ch) (parse-number string :start i))
+          ((char= #\$ ch) (parse-var string i))
+          ((char= #\. ch) (parse-var string i))
           ((symbol-char-p ch) (parse-span string #'symbol-char-p i))
           ((string-delimiter-char-p ch) (parse-string string (1+ i)))
           (t (bad-expression "unexpected character: ~C" ch)))))
@@ -123,8 +133,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *infix-match-ops*
-  '(([ list match ])
-    (|(| nil match |)|)))
+  '(
+    (|(| nil match |)|)
+    ([ nil match ])
+    ))
   
 (defparameter *infix-ops* 
   '((*) (/) (% rem)
@@ -165,14 +177,30 @@
        (replace-subseq infix 0 2
                        (list '-
                              (second infix))))
-   ;; ()[]
-   (let ((pos (position-if #'(lambda (i) (assoc i *infix-match-ops*))
-                           infix
-                           :from-end t)))
+   ;; ()
+   (let ((pos (position '|(| infix :from-end t)))
      (if pos
-         (reduce-matching-op (assoc (elt infix pos) *infix-match-ops*)
+         (reduce-matching-op '(|(| nil match |)|) 
                              pos
                              infix)))
+   ;; []
+   (let ((pos (position '|[| infix :from-end t)))
+     (if pos
+         (reduce-matching-op '([ nil match ]) 
+                             pos
+                             infix)))
+   ;; .x 
+   (let* ((pos (position-if #'(lambda (i) (and (consp i) (eql (car i) :dot))) infix))
+          (op (if pos (elt infix pos))))
+     (if (and pos
+              (> pos 0))
+         (replace-subseq infix (1- pos) 2
+                         (list (typecase (second op)
+                                 (keyword 'getf)
+                                 (integer 'elt)
+                                 (otherwise (bad-expression "Bad algoright with dot operation: ~A" infix)))
+                               (elt infix (1- pos))
+                               (second op)))))
    ;; ?: ternary
    (let* ((pos1 (position '? infix))
           (pos2 (if pos1 (position '|:| infix :start pos1)))
@@ -207,15 +235,25 @@
   (and (symbolp x) (not (member x '(and or not ||)))
        (alphanumericp (char (string x) 0))))
 
+(defun function-call-or-variable-p (x)
+  (and (consp x)
+       (symbolp (car x))))
+
 (defun reduce-matching-op (op pos infix)
   "Find the matching op (paren or bracket) and reduce."
   ;; Note we don't worry about nested parens because we search :from-end
   (let* ((end (position (op-match op) infix :start pos ))
          (len (+ 1 (- end pos)))
          (inside-parens (remove-commas (->prefix (subseq infix (+ pos 1) end)))))
-    (cond ((not (eq (op-name op) '|(|)) ;; handle {a,b} or [a,b]
+    (cond ((and (> pos 0) ;; handle f[a]
+                (= 1 (length inside-parens))
+                (eq (op-name op) '[)
+                (function-call-or-variable-p (elt infix (- pos 1))))
+           (replace-subseq infix (- pos 1) (+ len 1)
+                           (list* 'elt (elt infix (- pos 1)) inside-parens)))
+          ((not (eq (op-name op) '|(|)) ;; handle  [a,b]
            (replace-subseq infix pos len 
-                           (cons (op-name op) inside-parens))) ; {set}
+                           (cons 'list inside-parens))) ; {set}
           ((and (> pos 0) ;; handle f(a,b)
                 (function-symbol-p (elt infix (- pos 1))))
            (replace-subseq infix (- pos 1) (+ len 1)

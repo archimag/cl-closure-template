@@ -40,29 +40,44 @@
 
 (addtest (expression-parser-test)
   var-1
-  (ensure-same '(:variable "VAR")
+  (ensure-same '(:variable :var)
                (parse-expression " $var ")))
 
 (addtest (expression-parser-test)
   var-2
-  (ensure-same '(:variable "X" "Y")
+  (ensure-same '(getf (:variable :x) :y)
                (parse-expression "$x.y")))
+
+(addtest (expression-parser-test)
+  var-3
+  (ensure-same '(getf (elt (:variable :x) 1) :y)
+               (parse-expression "$x.1.y")))
+
+(addtest (expression-parser-test)
+  var-4
+  (ensure-same '(getf (elt (:variable :x) 0) :y)
+               (parse-expression "$x[0].y")))
+
+(addtest (expression-parser-test)
+  var-5
+  (ensure-same '(getf (elt (:variable :x) (:variable :z)) :y)
+               (parse-expression "$x[$z].y")))
 
 ;;;; operators
 
 (addtest (expression-parser-test)
   operator--unary
-  (ensure-same '(- (:variable "X"))
+  (ensure-same '(- (:variable :x))
                (parse-expression "-$x")))
 
 (addtest (expression-parser-test)
   operator-not
-  (ensure-same '(not (:variable "X"))
+  (ensure-same '(not (:variable :x))
                (parse-expression "not $x")))
 
 (addtest (expression-parser-test)
   operator-+-1
-  (ensure-same '(+ (:variable "X") (:variable "Y"))
+  (ensure-same '(+ (:variable :x) (:variable :y))
                (parse-expression " $x + $y ")))
 
 (addtest (expression-parser-test)
@@ -72,70 +87,70 @@
 
 (addtest (expression-parser-test)
   operator--
-  (ensure-same '(- (:variable "X") (:variable "Y"))
+  (ensure-same '(- (:variable :x) (:variable :y))
                (parse-expression " $x - $y ")))
 
 (addtest (expression-parser-test)
   operator-*
-  (ensure-same '(* (:variable "X") (:variable "Y"))
+  (ensure-same '(* (:variable :x) (:variable :y))
                (parse-expression " $x * $y ")))
 
 (addtest (expression-parser-test)
   operator-/
-  (ensure-same '(/ (:variable "X") (:variable "Y"))
+  (ensure-same '(/ (:variable :x) (:variable :y))
                (parse-expression " $x/$y ")))
 
 (addtest (expression-parser-test)
   operator-%
-  (ensure-same '(rem (:variable "X") (:variable "Y"))
+  (ensure-same '(rem (:variable :x) (:variable :y))
                (parse-expression " $x % $y ")))
 
 (addtest (expression-parser-test)
   operator->
-  (ensure-same '(> (:variable "X") (:variable "Y"))
+  (ensure-same '(> (:variable :x) (:variable :y))
                (parse-expression " $x > $y ")))
 
 (addtest (expression-parser-test)
   operator-<
-  (ensure-same '(< (:variable "X") (:variable "Y"))
+  (ensure-same '(< (:variable :x) (:variable :y))
                (parse-expression " $x < $y ")))
 
 (addtest (expression-parser-test)
   operator->=
-  (ensure-same '(>= (:variable "X") (:variable "Y"))
+  (ensure-same '(>= (:variable :x) (:variable :y))
                (parse-expression " $x >= $y ")))
 
 (addtest (expression-parser-test)
   operator-<=
-  (ensure-same '(<= (:variable "X") (:variable "Y"))
+  (ensure-same '(<= (:variable :x) (:variable :y))
                (parse-expression " $x <= $y ")))
 
 (addtest (expression-parser-test)
   operator-==
-  (ensure-same '(equal (:variable "X") (:variable "Y"))
+  (ensure-same '(equal (:variable :x) (:variable :y))
                (parse-expression " $x == $y ")))
 
 (addtest (expression-parser-test)
   operator-!=
-  (ensure-same '(closure-template.parser.expression:not-equal (:variable "X") (:variable "Y"))
+  (ensure-same '(closure-template.parser.expression:not-equal (:variable :x) (:variable :y))
                (parse-expression " $x != $y ")))
 
 (addtest (expression-parser-test)
   operator-and
-  (ensure-same '(and (:variable "X") (:variable "Y"))
+  (ensure-same '(and (:variable :x) (:variable :y))
                (parse-expression " $x and $y ")))
 
 (addtest (expression-parser-test)
   operator-or
-  (ensure-same '(or (:variable "X") (:variable "Y"))
+  (ensure-same '(or (:variable :x) (:variable :y))
                (parse-expression " $x or $y ")))
 
 (addtest (expression-parser-test)
   |operator-?:-ternary|
   (ensure-same '(:max 2
-                 (if (:variable "X")
-                     (:min (:variable "X")
-                           (if (:variable "Y")
+                 (if (:variable :x)
+                     (:min (:variable :x)
+                           (if (:variable :y)
                                3
                                (+ 5 4))
                            6)
@@ -152,12 +167,12 @@
 
 (addtest (expression-parser-test)
   function-2
-  (ensure-same '(:min (:variable "X") (:variable "Y"))
+  (ensure-same '(:min (:variable :x) (:variable :y))
                (parse-expression "min($x, $y)")))
 
 (addtest (expression-parser-test)
   function-3
-  (ensure-same '(:min (:variable "X") (:max 5 (:variable "Y")))
+  (ensure-same '(:min (:variable :x) (:max 5 (:variable :y)))
                (parse-expression "min($x, max(5, $y))")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -188,7 +203,7 @@
 (addtest (template-parser-test)
   print-1
   (ensure-same '(closure-template.parser:template ("helloName") "Hello "
-                 (closure-template.parser:print-tag (:VARIABLE "NAME")))
+                 (closure-template.parser:print-tag (:VARIABLE :name)))
                (parse-single-template "{template helloName}Hello {$name}{/template}")))
 
 (addtest (template-parser-test)
@@ -211,15 +226,15 @@
   if-1
   (ensure-same '(closure-template.parser:template ("if-test")
                  (closure-template.parser:if-tag
-                  ((:variable "X") ("Hello "
-                                    (closure-template.parser:print-tag (:variable "X"))))))
+                  ((:variable :x) ("Hello "
+                                    (closure-template.parser:print-tag (:variable :x))))))
                (parse-single-template "{template if-test}{if $x}Hello {$x}{/if}{/template}")))
 
 (addtest (template-parser-test)
   if-2
   (ensure-same '(closure-template.parser:template ("if-test")
                  (closure-template.parser:if-tag
-                  ((:variable "X") ("Hello " (closure-template.parser:print-tag (:variable "X"))))
+                  ((:variable :x) ("Hello " (closure-template.parser:print-tag (:variable :x))))
                   (t ("Hello world"))))
                (parse-single-template "{template if-test}{if $x}Hello {$x}{else}Hello world{/if}{/template}")))
 
@@ -227,8 +242,8 @@
   if-3
   (ensure-same '(closure-template.parser:template ("if-test")
                  (closure-template.parser:if-tag
-                  ((:variable "X") ("Hello " (closure-template.parser:print-tag (:variable "X"))))
-                  ((:variable "Y") ("Hello " (closure-template.parser:print-tag (:variable "Y"))))
+                  ((:variable :x) ("Hello " (closure-template.parser:print-tag (:variable :x))))
+                  ((:variable :y) ("Hello " (closure-template.parser:print-tag (:variable :y))))
                   (t ("Hello world"))))
                (parse-single-template "{template if-test}{if $x}Hello {$x}{elseif $y}Hello {$y}{else}Hello world{/if}{/template}")))
 
@@ -236,9 +251,9 @@
   if-4
   (ensure-same '(closure-template.parser:template ("if-test")
                  (closure-template.parser:if-tag
-                  ((:variable "X") ("Hello " (closure-template.parser:print-tag (:variable "X"))))
-                  ((:variable "Y") ("Hello " (closure-template.parser:print-tag (:variable "Y"))))
-                  ((:variable "Z") ("By!"))
+                  ((:variable :x) ("Hello " (closure-template.parser:print-tag (:variable :x))))
+                  ((:variable :y) ("Hello " (closure-template.parser:print-tag (:variable :y))))
+                  ((:variable :z) ("By!"))
                   (t ("Hello world"))))
                (parse-single-template "{template if-test}{if $x}Hello {$x}{elseif $y}Hello {$y}{elseif $z}By!{else}Hello world{/if}{/template}")))
 
@@ -247,7 +262,7 @@
 (addtest (template-parser-test)
   switch-1
   (ensure-same '(closure-template.parser:template ("switch-test")
-                 (closure-template.parser:switch-tag (:variable "X")
+                 (closure-template.parser:switch-tag (:variable :x)
                   nil
                   ((1) ("hello world"))
                   ((2 3 4) ("by-by"))))
@@ -256,7 +271,7 @@
 (addtest (template-parser-test)
   switch-2
   (ensure-same '(closure-template.parser:template ("switch-test")
-                 (closure-template.parser:switch-tag (:variable "X")
+                 (closure-template.parser:switch-tag (:variable :x)
                   ("default value")
                   ((1) ("hello world"))
                   ((2 3 4) ("by-by"))))
@@ -267,8 +282,8 @@
 (addtest (template-parser-test)
   foreach-1
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:foreach ((:variable "X") (:variable "Y" "FOO"))
-                  ((closure-template.parser:print-tag (:variable "X")))))
+                 (closure-template.parser:foreach ((:variable :x) (getf (:variable :y) :foo))
+                  ((closure-template.parser:print-tag (:variable :x)))))
                (parse-single-template "{template test}{foreach $x in $y.foo }{$x}{/foreach}{/template}")))
 
 ;;;; for
@@ -276,19 +291,19 @@
 (addtest (template-parser-test)
   for-1
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:for-tag ((:variable "X") (:range 10)) " ! "))
+                 (closure-template.parser:for-tag ((:variable :x) (:range 10)) " ! "))
                (parse-single-template "{template test}{for $x in range(10)} ! {/for}{/template}")))
 
 (addtest (template-parser-test)
   for-2
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:for-tag ((:variable "X") (:range 4 10)) " ! "))
+                 (closure-template.parser:for-tag ((:variable :x) (:range 4 10)) " ! "))
                (parse-single-template "{template test}{for $x in range(4, 10)} ! {/for}{/template}")))
 
 (addtest (template-parser-test)
   for-3
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:for-tag ((:variable "X") (:range 4 10 2)) " ! "))
+                 (closure-template.parser:for-tag ((:variable :x) (:range 4 10 2)) " ! "))
                (parse-single-template "{template test}{for $x in range(4, 10, 2)} ! {/for}{/template}")))
 
 
@@ -297,24 +312,24 @@
 (addtest (template-parser-test)
   call-1
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:call "hello-name" (:variable "X")))
+                 (closure-template.parser:call "hello-name" (:variable :x)))
                (parse-single-template "{template test}{call hello-name data=\"$x\" /}{/template}")))
 
 (addtest (template-parser-test)
   call-2
   (ensure-same '(closure-template.parser:template ("test")
                  (closure-template.parser:call "hello-name" nil
-                  (closure-template.parser:param (:variable "NAME") (:variable "X"))))
+                  (closure-template.parser:param (:variable :name) (:variable :x))))
                (parse-single-template "{template test}{call hello-name}{param name: $x /}{/call}{/template}")))
 
 
 (addtest (template-parser-test)
   call-3
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:call "hello-name" (:variable "DATA")
-                  (closure-template.parser:param (:variable "A") (:variable "X"))
-                  (closure-template.parser:param (:variable "B") nil
-                   "Hello " (closure-template.parser:print-tag (:variable "Y")))))
+                 (closure-template.parser:call "hello-name" (:variable :data)
+                  (closure-template.parser:param (:variable :a) (:variable :x))
+                  (closure-template.parser:param (:variable :b) nil
+                   "Hello " (closure-template.parser:print-tag (:variable :y)))))
                (parse-single-template "{template test}{call hello-name data=\"$data\"}{param a: $x /}{param b}Hello {$y}{/param} {/call}{/template}")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -27,19 +27,12 @@
 
 (defclass common-lisp-backend () ())
 
-(defun translate-variable (expr)
-  (labels ((impl (r-expr)
-             (if (cdr r-expr)
-                 `(getf ,(impl (cdr r-expr))
-                        ,(intern (string-upcase (car r-expr)) :keyword))
-                 (let* ((varname (string-upcase (car r-expr)))
-                        (varkey (intern varname :keyword))
-                        (varsymbol (intern varname)))
-                   (when (not (or (find varsymbol *local-variables*)
-                                  (find varkey *template-variables*)))
-                     (push varkey *template-variables*))
-                   varsymbol))))
-    (impl (reverse (cdr expr)))))
+(defun translate-variable (varkey)
+  (let ((varsymbol (intern (symbol-name varkey))))
+    (when (not (or (find varsymbol *local-variables*)
+                   (find varkey *template-variables*)))
+      (push varkey *template-variables*))
+    varsymbol))
 
 (defun +/closure-template (arg1 arg2)
   (if (or (stringp arg1)
@@ -58,7 +51,7 @@
            (symbolp (car expr)))
       (let ((key (car expr)))
         (case key
-          (:variable (translate-variable expr))
+          (:variable (translate-variable (second expr)))
           ('+ (translate-expression backend
                                     (cons '+/closure-template
                                           (cdr expr))))

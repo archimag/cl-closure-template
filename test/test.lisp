@@ -340,8 +340,10 @@
   (:run-setup :once-per-test-case )
   (:dynamic-variables *default-translate-package*)
   (:setup (setf *default-translate-package*
-                (make-template-package :closute-template.test.templates)))
-  (:teardown (delete-package :closute-template.test.templates)))
+                (make-template-package :closure-template.test.templates)))
+  (:teardown (when (find-package *default-translate-package*)
+               (delete-package *default-translate-package*))))
+;;(:teardown (delete-package :closute-template.test.templates)))
 
 ;;;; simple
 
@@ -351,7 +353,7 @@
                (progn
                 (compile-template :common-lisp-backend
                                   "{template hello-world}Hello world{/template}")
-                (funcall (find-symbol "HELLO-WORLD" :closute-template.test.templates)))))
+                (funcall (find-symbol "HELLO-WORLD" *default-translate-package*)))))
 
 ;;;; comment
 
@@ -362,7 +364,7 @@
                 (compile-template :common-lisp-backend
                                   "{template hello-world}//Hello world
 Hello world{/template}")
-                (funcall (find-symbol "HELLO-WORLD" :closute-template.test.templates)))))
+                (funcall (find-symbol "HELLO-WORLD" *default-translate-package*)))))
 
 (addtest (common-lisp-backend-test)
   comment-2
@@ -370,7 +372,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template hello-world}/*Hello world*/Hello world{/template}")
-                (funcall (find-symbol "HELLO-WORLD" :closute-template.test.templates)))))
+                (funcall (find-symbol "HELLO-WORLD" *default-translate-package*)))))
 
 ;;;; calculate
 
@@ -380,7 +382,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template calculate}{(2 + 3) * 4}{/template}")
-                (funcall (find-symbol "CALCULATE" :closute-template.test.templates)))))
+                (funcall (find-symbol "CALCULATE" *default-translate-package*)))))
 
 (addtest (common-lisp-backend-test)
   calculate-2
@@ -388,7 +390,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template calculate}{(2 + 3) * 4}{/template}")
-                (funcall (find-symbol "CALCULATE" :closute-template.test.templates)))))
+                (funcall (find-symbol "CALCULATE" *default-translate-package*)))))
 
 
 (addtest (common-lisp-backend-test)
@@ -397,7 +399,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template calculate}{(20 - 3) %  5}{/template}")
-                (funcall (find-symbol "CALCULATE" :closute-template.test.templates)))))
+                (funcall (find-symbol "CALCULATE" *default-translate-package*)))))
 
 
 (addtest (common-lisp-backend-test)
@@ -406,9 +408,9 @@ Hello world{/template}")
                (progn
                  (compile-template :common-lisp-backend
                                   "{template calculate}{hasData() ? 10 : 'Hello world'}{/template}")
-                 (list (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                 (list (funcall (find-symbol "CALCULATE" *default-translate-package*)
                                 nil)
-                       (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                       (funcall (find-symbol "CALCULATE" *default-translate-package*)
                           t)))))
 
 (addtest (common-lisp-backend-test)
@@ -416,7 +418,7 @@ Hello world{/template}")
   (ensure-null (progn
                  (compile-template :common-lisp-backend
                                    "{template calculate}{randomInt(10)}{/template}")
-                 (let ((fun (find-symbol "CALCULATE" :closute-template.test.templates)))
+                 (let ((fun (find-symbol "CALCULATE" *default-translate-package*)))
                    (iter (repeat 100)
                          (let ((i (parse-integer (funcall fun))))
                            (if (or (> i 9)
@@ -429,11 +431,11 @@ Hello world{/template}")
                (progn
                  (compile-template :common-lisp-backend
                                    "{template calculate}{$x + $y}{/template}")
-                 (list (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                 (list (funcall (find-symbol "CALCULATE" *default-translate-package*)
                                 '(:x 2 :y 3))
-                       (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                       (funcall (find-symbol "CALCULATE" *default-translate-package*)
                                 '(:x "Hello " :y "world"))
-                       (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                       (funcall (find-symbol "CALCULATE" *default-translate-package*)
                                 '(:x "Number: " :y 6))))))
 
 (addtest (common-lisp-backend-test)
@@ -442,12 +444,27 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template calculate}{not hasData() ? round(3.141592653589793) : round(2.7182817, $num)}{/template}")
-                (list (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                (list (funcall (find-symbol "CALCULATE" *default-translate-package*)
                                nil)
-                      (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                      (funcall (find-symbol "CALCULATE" *default-translate-package*)
                                '(:num 2))
-                      (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                      (funcall (find-symbol "CALCULATE" *default-translate-package*)
                                '(:num 4))))))
+
+(addtest (common-lisp-backend-test)
+  calculate-8
+  (ensure-same '("1" "16" "9" "36")
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template calculate}{$array[$index]}{/template}")
+                 (list (funcall (find-symbol "CALCULATE" *default-translate-package*)
+                                '(:array (0 1 4 9 16 25 36) :index 1))
+                       (funcall (find-symbol "CALCULATE" *default-translate-package*)
+                                '(:array (0 1 4 9 16 25 36) :index 4))
+                       (funcall (find-symbol "CALCULATE" *default-translate-package*)
+                                '(:array (0 1 4 9 16 25 36) :index 3))
+                       (funcall (find-symbol "CALCULATE" *default-translate-package*)
+                                '(:array (0 1 4 9 16 25 36) :index 6))))))
 
 ;;;; substitions
 
@@ -457,7 +474,7 @@ Hello world{/template}")
                (progn
                  (compile-template :common-lisp-backend
                                    "{template substitions}{sp}{nil}{\\r}{\\n}{\\t}{lb}{rb}{/template}")
-                 (funcall (find-symbol "SUBSTITIONS" :closute-template.test.templates)))))
+                 (funcall (find-symbol "SUBSTITIONS" *default-translate-package*)))))
 
 ;;;; print
             
@@ -467,7 +484,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template hello-name}Hello {$name}{/template}")
-                (funcall (find-symbol "HELLO-NAME" :closute-template.test.templates)
+                (funcall (find-symbol "HELLO-NAME" *default-translate-package*)
                          '(:name "Closure Template")))))
 
 ;;;; dotted variables
@@ -478,7 +495,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template dotted}{$obj.first} {$obj.second}{/template}")
-                (funcall (find-symbol "DOTTED" :closute-template.test.templates)
+                (funcall (find-symbol "DOTTED" *default-translate-package*)
                          '(:obj (:first "Hello" :second "world"))))))
 
 ;;;; if
@@ -489,9 +506,9 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template test}{if $name}Hello {$name}{/if}{/template}")
-                (list (funcall (find-symbol "TEST" :closute-template.test.templates)
+                (list (funcall (find-symbol "TEST" *default-translate-package*)
                                '(:name "Andrey"))
-                      (funcall (find-symbol "TEST" :closute-template.test.templates)
+                      (funcall (find-symbol "TEST" *default-translate-package*)
                                nil)))))
 
 (addtest (common-lisp-backend-test)
@@ -500,9 +517,9 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template test}Hello {if $name}{$name}{else}Guest{/if}{/template}")
-                (list (funcall (find-symbol "TEST" :closute-template.test.templates)
+                (list (funcall (find-symbol "TEST" *default-translate-package*)
                                '(:name "Andrey"))
-                      (funcall (find-symbol "TEST" :closute-template.test.templates)
+                      (funcall (find-symbol "TEST" *default-translate-package*)
                                nil)))))
 
 (addtest (common-lisp-backend-test)
@@ -511,13 +528,13 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template test}{if $hello}Hello {$hello}{elseif $by}By {$by}{elseif $thank}Thank {$thank}{else}Guest?{/if}{/template}")
-                (list (funcall (find-symbol "TEST" :closute-template.test.templates)
+                (list (funcall (find-symbol "TEST" *default-translate-package*)
                                '(:hello "Andrey"))
-                      (funcall (find-symbol "TEST" :closute-template.test.templates)
+                      (funcall (find-symbol "TEST" *default-translate-package*)
                                '(:by "Masha"))
-                      (funcall (find-symbol "TEST" :closute-template.test.templates)
+                      (funcall (find-symbol "TEST" *default-translate-package*)
                                '(:thank "Vasy"))
-                      (funcall (find-symbol "TEST" :closute-template.test.templates)
+                      (funcall (find-symbol "TEST" *default-translate-package*)
                                nil)))))
 
 ;;;; switch
@@ -528,13 +545,13 @@ Hello world{/template}")
                (progn
                  (compile-template :common-lisp-backend
                                    "{template test}{switch $var}{case 0}Variant 1: {$var}{case 1, 'Hello', 2}Variant 2: {$var}{default}Miss!{/switch}{/template}")
-                 (list (funcall (find-symbol "TEST" :closute-template.test.templates)
+                 (list (funcall (find-symbol "TEST" *default-translate-package*)
                                 '(:var 0))
-                       (funcall (find-symbol "TEST" :closute-template.test.templates)
+                       (funcall (find-symbol "TEST" *default-translate-package*)
                                 '(:var "Hello"))                       
-                       (funcall (find-symbol "TEST" :closute-template.test.templates)
+                       (funcall (find-symbol "TEST" *default-translate-package*)
                                 nil)
-                       (funcall (find-symbol "TEST" :closute-template.test.templates)
+                       (funcall (find-symbol "TEST" *default-translate-package*)
                                 '(:var 2))))))
                
 ;;;; foreach
@@ -545,7 +562,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template test}{foreach $opernand in $opernands} {$opernand}{/foreach}{/template}")
-                (funcall (find-symbol "TEST" :closute-template.test.templates)
+                (funcall (find-symbol "TEST" *default-translate-package*)
                          '(:opernands ("alpha" "beta" "gamma"))))))
 
 (addtest (common-lisp-backend-test)
@@ -554,9 +571,9 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template test}{foreach $opernand in $opernands} {$opernand}{ifempty}Hello world{/foreach}{/template}")
-                (list (funcall (find-symbol "TEST" :closute-template.test.templates)
+                (list (funcall (find-symbol "TEST" *default-translate-package*)
                                '(:opernands ("alpha" "beta" "gamma")))
-                      (funcall (find-symbol "TEST" :closute-template.test.templates)
+                      (funcall (find-symbol "TEST" *default-translate-package*)
                                nil)))))
 
 (addtest (common-lisp-backend-test)
@@ -565,7 +582,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template test}{foreach $opernand in $opernands}{index($opernand)}{/foreach}{/template}")
-                (funcall (find-symbol "TEST" :closute-template.test.templates)
+                (funcall (find-symbol "TEST" *default-translate-package*)
                                '(:opernands ("alpha" "beta" "gamma"))))))
 
 (addtest (common-lisp-backend-test)
@@ -574,7 +591,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template test}{foreach $opernand in $opernands}{if not isFirst($opernand)} + {/if}{$opernand}{/foreach}{/template}")
-                (funcall (find-symbol "TEST" :closute-template.test.templates)
+                (funcall (find-symbol "TEST" *default-translate-package*)
                          '(:opernands ("alpha" "beta" "gamma"))))))
 
 (addtest (common-lisp-backend-test)
@@ -583,7 +600,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template test}{foreach $opernand in $opernands}{$opernand}{if not isLast($opernand)} + {/if}{/foreach}{/template}")
-                (funcall (find-symbol "TEST" :closute-template.test.templates)
+                (funcall (find-symbol "TEST" *default-translate-package*)
                          '(:opernands ("alpha" "beta" "gamma"))))))
 ;;;; for
 
@@ -593,7 +610,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template test}{for $i in range(5)} {$i}{/for}{/template}")
-                (funcall (find-symbol "TEST" :closute-template.test.templates)))))
+                (funcall (find-symbol "TEST" *default-translate-package*)))))
 
 (addtest (common-lisp-backend-test)
   for-2
@@ -601,7 +618,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template test}{for $i in range(4, 10)}{$i}{/for}{/template}")
-                (funcall (find-symbol "TEST" :closute-template.test.templates)))))
+                (funcall (find-symbol "TEST" *default-translate-package*)))))
 
 (addtest (common-lisp-backend-test)
   for-3
@@ -609,7 +626,7 @@ Hello world{/template}")
                (progn
                 (compile-template :common-lisp-backend
                                   "{template test}{for $i in range($from, $to, $by)}{$i}{/for}{/template}")
-                (funcall (find-symbol "TEST" :closute-template.test.templates)
+                (funcall (find-symbol "TEST" *default-translate-package*)
                          '(:from 1 :to 10 :by 3)))))
 
 ;;;; call
@@ -621,7 +638,7 @@ Hello world{/template}")
                 (compile-template :common-lisp-backend
                                   "{template hello-world}Hello world{/template}
 {template test}{call hello-world /}{/template}")
-                (funcall (find-symbol "TEST" :closute-template.test.templates)))))
+                (funcall (find-symbol "TEST" *default-translate-package*)))))
 
 (addtest (common-lisp-backend-test)
   call-2
@@ -630,7 +647,7 @@ Hello world{/template}")
                 (compile-template :common-lisp-backend
                                   "{template hello-name}Hello {$name}{/template}
 {template test}{call hello-name}{param name: 'Andrey'/}{/call}{/template}")
-                (funcall (find-symbol "TEST" :closute-template.test.templates)))))
+                (funcall (find-symbol "TEST" *default-translate-package*)))))
 
 (addtest (common-lisp-backend-test)
   call-3
@@ -639,7 +656,7 @@ Hello world{/template}")
                 (compile-template :common-lisp-backend
                                   "{template hello-name}Hello {$name}{/template}
 {template test}{call hello-name}{param name}Andrey{/param}{/call}{/template}")
-                (funcall (find-symbol "TEST" :closute-template.test.templates)))))
+                (funcall (find-symbol "TEST" *default-translate-package*)))))
 
 
 (addtest (common-lisp-backend-test)
@@ -649,7 +666,7 @@ Hello world{/template}")
                 (compile-template :common-lisp-backend
                                   "{template hello-name}Hello {$name}{/template}
 {template test}{call hello-name data=\"all\"/}{/template}")
-                (funcall (find-symbol "TEST" :closute-template.test.templates)
+                (funcall (find-symbol "TEST" *default-translate-package*)
                          '(:name "Masha")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -11,9 +11,7 @@
 
 (defvar *local-variables* nil)
 
-(defun write-template-string (str)
-  (when str
-    (format *template-output* "~A" str)))
+(defvar *loops-vars* nil)
 
 (defun make-template-package (&optional (name "CLOSURE-TEMPLATE.SHARE") &aux (upname (string-upcase name)))
   (or (find-package upname)
@@ -21,7 +19,7 @@
                               upname
                               "CLOSURE-TEMPLATE.SHARE")
                (:use #:cl)
-               (:import-from #:closure-template #:write-template-string #:*template-output*)))))
+               (:import-from #:closure-template #:*template-output*)))))
 
 
 (defparameter *default-translate-package*
@@ -43,21 +41,37 @@
                    varsymbol))))
     (impl (reverse (cdr expr)))))
 
+(defun +/closure-template (arg1 arg2)
+  (if (or (stringp arg1)
+          (stringp arg2))
+      (format nil "~A~A" arg1 arg2)
+      (+ arg1 arg2)))
+
+(defun round/closure-template (number &optional digits-after-point)
+  (if digits-after-point
+      (let ((factor (expt 10.0 digits-after-point)))
+        (/ (round (* number factor)) factor))
+      (round number)))
 
 (defmethod translate-expression ((backend common-lisp-backend) expr)
-  (flet ((symbol-from-key (key)
-           (or (find-symbol (symbol-name key)
-                            '#:closure-template)
-               (error "Bad keyword ~A" key))))
   (if (and (consp expr)
            (symbolp (car expr)))
       (let ((key (car expr)))
         (case key
           (:variable (translate-variable expr))
-          (otherwise (cons (symbol-from-key (car expr))
+          ('+ (translate-expression backend
+                                    (cons '+/closure-template
+                                          (cdr expr))))
+          (:round (translate-expression backend
+                                        (cons 'round/closure-template
+                                              (cdr expr))))
+          (otherwise (cons (or (find-symbol (symbol-name key)
+                                            '#:closure-template)
+                               (error "Bad keyword ~A" key))
                            (iter (for item in (cdr expr))
-                                 (collect (translate-expression backend item)))))))
-      expr)))
+                                 (when item
+                                   (collect (translate-expression backend item))))))))
+      expr))
 
 
 (defmethod backend-print ((backend common-lisp-backend) expr)
@@ -96,13 +110,39 @@
          (binds (iter (for var in *template-variables*)
                       (collect (list (find-symbol (symbol-name var) *package*)
                                      `(getf $data$ ,var))))))
-    (if binds
-        `(defun ,(intern (string-upcase (caar args))) ($data$)
-           (let (,@binds)
-             ,body))
-        `(defun ,(intern (string-upcase (caar args))) (&optional $data$)
-           (declare (ignore $data$))
-           ,body))))
+    `(defun ,(intern (string-upcase (caar args))) (,@(unless binds '(&optional)) $data$)
+       (let ((*loops-vars* nil) ,@binds)
+         (macrolet ((write-template-string (str)
+                      `(when ,str
+                         (format *template-output* "~A" ,str)))
+                    (random-int (arg) `(random ,arg))
+                    (has-data () '(not (null $data$)))
+                    (index (s) `(second (assoc ',s *loops-vars*)))
+                    (is-first (s) `(= 0 (index ,s)))
+                    (is-last (s) (let ((var (gensym "$G")))
+                                   `(let ((,var (assoc ',s *loops-vars*)))
+                                      (= (second ,var)
+                                         (third ,var))))))
+           ,body)))))
+
+(defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:foreach)) args)
+  (let* ((loop-var (intern (string-upcase (second (first (first args))))))
+         (*local-variables* (cons loop-var
+                                  *local-variables*))
+         (seq-expr (translate-expression backend (second (first args)))))
+    (let ((seqvar (gensym "$G")))
+      `(let ((,seqvar ,seq-expr))
+         (if ,seqvar
+             (let ((*loops-vars* (acons ',loop-var (list 0 (1- (length ,seqvar)))
+                                        *loops-vars*)))
+               (loop
+                  for ,loop-var in ,seqvar                  
+                  do ,(translate-item backend
+                                      (second args))
+                  do (incf (index ,loop-var))))
+             ,(if (third args)
+                  (translate-item backend
+                                  (third args))))))))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:literal)) args)
   `(write-template-string ,(car args)))
@@ -141,29 +181,6 @@
          ,@(if (second args) (list (list t
                                          (translate-item backend
                                                          (second args)))))))))
-     
-
-
-(defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:foreach)) args)
-  (let* ((loop-var (intern (string-upcase (second (first (first args))))))
-         (*local-variables* (cons loop-var
-                                  *local-variables*))
-         (seq-expr (translate-expression backend (second (first args)))))
-    (if (third args)
-        (let ((seqvar (gensym "$G")))
-          `(let ((,seqvar ,seq-expr))
-             (if ,seqvar
-                 (loop
-                    for ,loop-var in ,seqvar
-                    do ,(translate-item backend
-                                        (second args)))
-                 ,(translate-item backend
-                                 (third args)))))
-        `(loop
-            for ,loop-var in ,seq-expr
-            do ,(translate-item backend
-                                (second args)))
-        )))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:for-tag)) args)
   (let* ((loop-var (intern (string-upcase (second (first (first args))))))

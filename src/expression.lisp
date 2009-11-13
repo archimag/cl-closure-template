@@ -37,29 +37,25 @@
           'string))
 
 (defparameter *possible-functions*
-  '("isFirst"
-    "isLast"
-    "index"
+  '("isFirst" "isLast" "index"
     "hasData"
+    "randomInt"
     "length"
     "round"
-    "floor"
-    "ceiling"
-    "min"
-    "max"
-    "randomInt"
+    "floor" "ceiling"
+    "min" "max"
     "range"))
 
-(defun make-logic-symbol (string)
+(defun make-expression-symbol (string)
   "Convert string to symbol, preserving case, except for AND/OR/NOT/FORALL/EXISTS."
   (cond ((find string '(and or not) :test #'string-equal))
         ((char= #\$ (char string 0)) (cons :variable
                                            (mapcar #'lispify-name
                                                    (split-sequence:split-sequence #\.
                                                                                   (subseq string 1)))))
-        ((equal string "null") nil)
-        ((equal string "true") t)
-        ((equal string "false") nil)
+        ((equal string "null") :nil)
+        ((equal string "true") :t)
+        ((equal string "false") :nil)
         ((equal string "all") :all)
         ((find string *possible-functions* :test #'string-equal) (intern (lispify-name string) :keyword))
         (t (bad-expression "Bad symbol: ~A" string))))
@@ -74,7 +70,7 @@
 
 (defun parse-span (string pred i)
   (let ((j (position-if-not pred string :start i)))
-    (values (make-logic-symbol (subseq string i j)) j)))
+    (values (make-expression-symbol (subseq string i j)) j)))
 
 (defun parse-string (string i)
   (let ((j (position #\' string :start i)))
@@ -135,8 +131,8 @@
     (+) (-)
     (<) (>) (<=) (>=)
     (== equal) (!= not-equal)
-    (not not unary)
     (and)
+    (not not unary)
     (or)
     (|,|))
   "A list of lists of operators, highest precedence first.")
@@ -220,11 +216,10 @@
     (cond ((not (eq (op-name op) '|(|)) ;; handle {a,b} or [a,b]
            (replace-subseq infix pos len 
                            (cons (op-name op) inside-parens))) ; {set}
-          ((and (> pos 0)  ;; handle f(a,b)
+          ((and (> pos 0) ;; handle f(a,b)
                 (function-symbol-p (elt infix (- pos 1))))
-           (handle-quantifiers
-            (replace-subseq infix (- pos 1) (+ len 1)
-                           (cons (elt infix (- pos 1)) inside-parens))))
+           (replace-subseq infix (- pos 1) (+ len 1)
+                           (cons (elt infix (- pos 1)) inside-parens)))
           (t ;; handle (a + b)
            (assert (= (length inside-parens) 1))
            (replace-subseq infix pos len (first inside-parens))))))
@@ -235,12 +230,6 @@
                                    (remove-commas (arg2 exp))))
         (t (list exp))))
 
-(defun handle-quantifiers (exp)
-  "Change (FORALL x y P) to (FORALL (x y) P)."
-  (if (member (op exp) '(FORALL EXISTS))
-    `(,(op exp) ,(butlast (rest exp)) ,(first (last exp)))
-    exp))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; public interface
@@ -250,4 +239,4 @@
   (unless str
     (bad-expression "NIL is not expression"))
   (let ((*package* (find-package '#:closure-template.parser.expression)))
-    (->prefix (string->infix str))))
+    (->prefix str)))

@@ -145,12 +145,18 @@
 ;;;; functions
 
 (addtest (expression-parser-test)
-  expression-3
+  ;; very important!!!
+  function-1
+  (ensure-same '(:has-data nil)
+               (parse-expression "hasData()")))
+
+(addtest (expression-parser-test)
+  function-2
   (ensure-same '(:min (:variable "X") (:variable "Y"))
                (parse-expression "min($x, $y)")))
 
 (addtest (expression-parser-test)
-  expression-4
+  function-3
   (ensure-same '(:min (:variable "X") (:max 5 (:variable "Y")))
                (parse-expression "min($x, max(5, $y))")))
 
@@ -378,6 +384,56 @@ Hello world{/template}")
                                   "{template calculate}{(20 - 3) %  5}{/template}")
                 (funcall (find-symbol "CALCULATE" :closute-template.test.templates)))))
 
+
+(addtest (common-lisp-backend-test)
+  calculate-4
+  (ensure-same '("Hello world" "10")
+               (progn
+                 (compile-template :common-lisp-backend
+                                  "{template calculate}{hasData() ? 10 : 'Hello world'}{/template}")
+                 (list (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                                nil)
+                       (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                          t)))))
+
+(addtest (common-lisp-backend-test)
+  calculate-5
+  (ensure-null (progn
+                 (compile-template :common-lisp-backend
+                                   "{template calculate}{randomInt(10)}{/template}")
+                 (let ((fun (find-symbol "CALCULATE" :closute-template.test.templates)))
+                   (iter (repeat 100)
+                         (let ((i (parse-integer (funcall fun))))
+                           (if (or (> i 9)
+                                   (< i 0))
+                               (collect i))))))))
+
+(addtest (common-lisp-backend-test)
+  calculate-6
+  (ensure-same '("5" "Hello world" "Number: 6")
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template calculate}{$x + $y}{/template}")
+                 (list (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                                '(:x 2 :y 3))
+                       (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                                '(:x "Hello " :y "world"))
+                       (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                                '(:x "Number: " :y 6))))))
+
+(addtest (common-lisp-backend-test)
+  calculate-7
+  (ensure-same '("3" "2.72" "2.7183")
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template calculate}{not hasData() ? round(3.141592653589793) : round(2.7182817, $num)}{/template}")
+                (list (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                               nil)
+                      (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                               '(:num 2))
+                      (funcall (find-symbol "CALCULATE" :closute-template.test.templates)
+                               '(:num 4))))))
+
 ;;;; substitions
 
 (addtest (common-lisp-backend-test)
@@ -488,6 +544,32 @@ Hello world{/template}")
                       (funcall (find-symbol "TEST" :closute-template.test.templates)
                                nil)))))
 
+(addtest (common-lisp-backend-test)
+  foreach-3
+  (ensure-same '"012"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template test}{foreach $opernand in $opernands}{index($opernand)}{/foreach}{/template}")
+                (funcall (find-symbol "TEST" :closute-template.test.templates)
+                               '(:opernands ("alpha" "beta" "gamma"))))))
+
+(addtest (common-lisp-backend-test)
+  foreach-4
+  (ensure-same "alpha + beta + gamma"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template test}{foreach $opernand in $opernands}{if not isFirst($opernand)} + {/if}{$opernand}{/foreach}{/template}")
+                (funcall (find-symbol "TEST" :closute-template.test.templates)
+                         '(:opernands ("alpha" "beta" "gamma"))))))
+
+(addtest (common-lisp-backend-test)
+  foreach-5
+  (ensure-same "alpha + beta + gamma"
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template test}{foreach $opernand in $opernands}{$opernand}{if not isLast($opernand)} + {/if}{/foreach}{/template}")
+                (funcall (find-symbol "TEST" :closute-template.test.templates)
+                         '(:opernands ("alpha" "beta" "gamma"))))))
 ;;;; for
 
 (addtest (common-lisp-backend-test)

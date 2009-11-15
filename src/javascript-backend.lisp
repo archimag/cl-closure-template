@@ -20,6 +20,9 @@
           (case key
             (rem (cons 'ps:% (translate-expression backend
                                                    (cdr expr))))
+            (:round (translate-expression backend
+                                        (cons 'round-closure-template
+                                              (cdr expr))))
             (:variable `(ps:@ $data$ ,(make-symbol (string-upcase (second expr)))))
             (otherwise (cons (or (find-symbol (symbol-name key)
                                               '#:closure-template)
@@ -69,7 +72,12 @@
                                (cdr args))))
     `(setf (,@*js-namespace* ,(js-string-to-symbol (caar args)))
          (lambda ($data$)
-           (macrolet ((has-data () '(if $data$ t)))
+           (macrolet ((has-data () '(if $data$ t))
+                      (round-closure-template (number &optional digits-after-point)
+                        `(if ,digits-after-point
+                             (let ((factor (expt 10.0 ,digits-after-point)))
+                               (/ (round (* ,number factor)) factor))
+                             (round ,number))))
              (setf $template-output$ "")
              ,body
              $template-output$)))))

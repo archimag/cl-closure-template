@@ -44,6 +44,7 @@
                      *substitions*))) (translate-named-item backend
                                                             (car item)
                                                             (cdr item)))
+    ((= (length item) 0))
     ((= (length item) 1) (translate-item backend
                                          (car item)))
     (t (cons 'progn
@@ -59,6 +60,18 @@
 (defmethod translate-item (backend (item string))
   (backend-print backend
                  item))
+
+(defmethod translate-item (backend (symbol symbol))
+  (backend-print backend
+                 (case symbol
+                   (closure-template.parser:space-tag (string #\Space))
+                   (closure-template.parser:emptry-string "")
+                   (closure-template.parser:carriage-return (string #\Return))
+                   (closure-template.parser:line-feed (string #\Newline))
+                   (closure-template.parser:tab (string #\Tab))
+                   (closure-template.parser:left-brace "{")
+                   (closure-template.parser:right-brace "}")
+                   (otherwise (call-next-method)))))
 
 (defmethod translate-named-item (backend (item (eql 'closure-template.parser:print-tag)) args)
   (backend-print backend

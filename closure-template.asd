@@ -11,6 +11,8 @@
 
 (in-package #:closure-template-system)
 
+(when (find-system 'asdf-system-connections)
+  (operate 'load-op 'asdf-system-connections))
 
 (defsystem closure-template
   :depends-on (#:wiki-parser #:split-sequence)
@@ -28,8 +30,8 @@
 
 (defsystem closure-template-test
   :depends-on (#:closure-template #:lift)
-  :components ((:module "test"
-                        :components ((:file "test")))))
+  :components ((:module "t"
+                        :components ((:file "core-test")))))
 
 
 (defmethod perform ((o test-op) (c (eql (find-system 'closure-template-test))))
@@ -41,3 +43,10 @@
         (error "test-op failed: ~A"
                (concatenate 'list errors failures))
         (print test-results))))
+
+#+asdf-system-connections
+(defsystem-connection closure-template-javascript-backend
+  :requires (closure-template parenscript)
+  :components ((:module "src"
+                        :components ((:file "javascript-backend")))))
+

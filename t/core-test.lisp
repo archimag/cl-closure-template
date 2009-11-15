@@ -407,7 +407,7 @@ Hello world{/template}")
   (ensure-same '("Hello world" "10")
                (progn
                  (compile-template :common-lisp-backend
-                                  "{template calculate}{hasData() ? 10 : 'Hello world'}{/template}")
+                                   "{template calculate}{hasData() ? 10 : 'Hello world'}{/template}")
                  (list (funcall (find-symbol "CALCULATE" *default-translate-package*)
                                 nil)
                        (funcall (find-symbol "CALCULATE" *default-translate-package*)
@@ -676,12 +676,3 @@ Hello world{/template}")
 (defun run-closure-template-tests (&optional (test 'closure-template-test))
   "Run all closure-template tests"
   (run-tests :suite test :report-pathname nil))
-
-
-
-
-
-
-
-
-

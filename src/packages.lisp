@@ -26,4 +26,5 @@
            #:translate-template
            #:compile-template
            #:*default-translate-package*
+           #:*default-js-namespace*
            #:make-template-package))

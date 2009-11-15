@@ -24,6 +24,9 @@
                                         (cons 'round-closure-template
                                               (cdr expr))))
             (:variable `(ps:@ $data$ ,(make-symbol (string-upcase (second expr)))))
+            (getf `(,@(translate-expression backend
+                                            (second expr) )
+                      ,(make-symbol (string-upcase (third expr)))))
             (otherwise (cons (or (find-symbol (symbol-name key)
                                               '#:closure-template)
                                  (error "Bad keyword ~A" key))

@@ -23,7 +23,9 @@
             (:round (translate-expression backend
                                         (cons 'round-closure-template
                                               (cdr expr))))
-            (:variable `(ps:@ $data$ ,(make-symbol (string-upcase (second expr)))))
+            (:variable (if (find (second expr) *local-variables* :test #'string=)
+                           (make-symbol (symbol-name (second expr)))
+                           `(ps:@ $data$ ,(make-symbol (string-upcase (second expr))))))
             (getf `(,@(translate-expression backend
                                             (second expr) )
                       ,(make-symbol (string-upcase (third expr)))))
@@ -103,6 +105,7 @@
 ;;                                   (third args))))))))
 
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:if-tag)) args)
+  "Full copy from common-lisp-backend"
   (cond
     ((= (length args) 1) `(when ,(translate-expression backend
                                                        (first (first args)))
@@ -133,6 +136,22 @@
      ,@(if (second args) (list (list t
                                      (translate-item backend
                                                      (second args)))))))
+
+(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:for-tag)) args)
+  "Full copy from common-lisp-backend"
+  (let* ((loop-var (intern (string-upcase (second (first (first args))))))
+         (*local-variables* (cons loop-var
+                                  *local-variables*))
+         (from-expr (translate-expression backend
+                                          (second (second (first args)))))
+         (below-expr (translate-expression backend
+                                           (third (second (first args)))))
+         (by-expr (translate-expression backend
+                                        (fourth (second (first args))))))
+    `(loop
+        for ,loop-var from ,(if below-expr from-expr 0) below ,(or below-expr from-expr) ,@(if by-expr (list 'by by-expr))
+        do ,(translate-item backend
+                            (cdr args)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; translate and compile template methods

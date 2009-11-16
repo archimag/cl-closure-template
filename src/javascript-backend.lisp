@@ -37,10 +37,12 @@
                                      (collect (translate-expression backend item))))))))
           expr)))
 
+(defparameter *js-print-target* '$template-output$)
+
 (defmethod backend-print ((backend javascript-backend) expr)
-  `(setf $template-output$
-         (+ $template-output$
-            ,expr)))
+  (list 'ps:+=
+        *js-print-target*
+        expr))
 
 (defparameter *default-js-namespace* '(ps:@ *closurte-template *share))
 
@@ -152,6 +154,43 @@
         for ,loop-var from ,(if below-expr from-expr 0) below ,(or below-expr from-expr) ,@(if by-expr (list 'by by-expr))
         do ,(translate-item backend
                             (cdr args)))))
+
+
+(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:call)) args)
+  (let ((fun-name `(,@*js-namespace* ,(js-string-to-symbol (first args))))
+        (data-param (cond
+                      ((eql (second args) :all) '$data$)
+                      ((second args) (translate-expression backend (second args)))))
+        (params (cddr args)))
+    (if (not params)
+        (backend-print backend
+                       (if data-param
+                           (list fun-name data-param)
+                           (list fun-name)))
+        (let ((call-expr '((defvar _$data$_ (ps:create)))))
+          (if data-param
+              (let ((lvar (gensym "$_")))
+                (push `(ps:for-in (,lvar ,data-param)
+                                  (setf (ps:@ _$data$_ ,lvar)
+                                        (aref ,data-param ,lvar)))
+                      call-expr))
+          
+              (iter (for param in params)
+                    (let ((slotname `(ps:@ _$data$_ ,(make-symbol (symbol-name (second (second param)))))))
+                      (push `(setf ,slotname "")
+                            call-expr)
+                      (if (third param)
+                          (push `(setf ,slotname
+                                       ,(translate-expression backend
+                                                              (third param)))
+                                call-expr)
+                          (let ((*js-print-target* slotname))
+                            (push (translate-item backend
+                                                  (cdddr param))
+                                  call-expr))))))
+          `(progn ,@(reverse call-expr)
+                  ,(backend-print backend
+                                  (list fun-name '_$data$_)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; translate and compile template methods

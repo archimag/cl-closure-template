@@ -10,32 +10,28 @@
 (defclass javascript-backend () ())
 
 (defmethod translate-expression ((backend javascript-backend) expr)
-  (flet ((symbol-from-key (key)
-           (or (find-symbol (symbol-name key)
-                            '#:closure-template)
-               (error "Bad keyword ~A" key))))
-    (if (and (consp expr)
-             (symbolp (car expr)))
-        (let ((key (car expr)))
-          (case key
-            (rem (cons 'ps:% (translate-expression backend
-                                                   (cdr expr))))
-            (:round (translate-expression backend
+  (if (and (consp expr)
+           (symbolp (car expr)))
+      (let ((key (car expr)))
+        (case key
+          (rem (cons 'ps:% (translate-expression backend
+                                                 (cdr expr))))
+          (:round (translate-expression backend
                                         (cons 'round-closure-template
                                               (cdr expr))))
-            (:variable (if (find (second expr) *local-variables* :test #'string=)
-                           (make-symbol (symbol-name (second expr)))
-                           `(ps:@ $data$ ,(make-symbol (string-upcase (second expr))))))
-            (getf `(,@(translate-expression backend
-                                            (second expr) )
-                      ,(make-symbol (string-upcase (third expr)))))
-            (otherwise (cons (or (find-symbol (symbol-name key)
-                                              '#:closure-template)
-                                 (error "Bad keyword ~A" key))
-                             (iter (for item in (cdr expr))
-                                   (when item
-                                     (collect (translate-expression backend item))))))))
-          expr)))
+          (:variable (if (find (second expr) *local-variables* :test #'string=)
+                         (make-symbol (symbol-name (second expr)))
+                         `(ps:@ $data$ ,(make-symbol (string-upcase (second expr))))))
+          (getf `(,@(translate-expression backend
+                                          (second expr) )
+                    ,(make-symbol (string-upcase (third expr)))))
+          (otherwise (cons (or (find-symbol (symbol-name key)
+                                            '#:closure-template)
+                               (error "Bad keyword ~A" key))
+                           (iter (for item in (cdr expr))
+                                 (when item
+                                   (collect (translate-expression backend item))))))))
+      expr))
 
 (defparameter *js-print-target* '$template-output$)
 
@@ -73,6 +69,12 @@
                        (collect (translate-item backend
                                                 fun))))))
 
+(defun loop-variable-counter-symbol (loop-var)
+  (make-symbol (format nil "~A-COUNTER" loop-var)))
+
+(defun loop-sequence-symbol (loop-var)
+  (make-symbol (format nil "~A-SEQ" loop-var)))
+
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:template)) args)
   (let* ((*template-variables* nil)
          (body (translate-item backend
@@ -82,6 +84,9 @@
            (defvar $data$ (or $$data$$ (ps:create)))
            (defvar $template-output$ "")
            (macrolet ((has-data () '(if $$data$$ t))
+                      (index (var) `,(loop-variable-counter-symbol var))
+                      (is-first (var) `(= 0 (index ,var)))
+                      (is-last (var) `(= (1- (ps:@ ,(loop-sequence-symbol var) length)) (index ,var)))
                       (round-closure-template (number &optional digits-after-point)
                         `(if ,digits-after-point
                              (let ((factor (expt 10.0 ,digits-after-point)))
@@ -90,21 +95,25 @@
              ,body)
            $template-output$))))
 
-;; (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:foreach)) args)
-;;   (let* ((loop-var (make-symbol (string-upcase (second (first (first args))))))
-;;          (*local-variables* (cons loop-var
-;;                                   *local-variables*))
-;;          (seq-expr (translate-expression backend (second (first args)))))
-;;     (let ((seqvar (gensym "$G")))
-;;       `(let ((,seqvar ,seq-expr))
-;;          (if ,seqvar
-;;                (loop
-;;                   for ,loop-var in ,seqvar                  
-;;                   do ,(translate-item backend
-;;                                       (second args)))
-;;              ,(if (third args)
-;;                   (translate-item backend
-;;                                   (third args))))))))
+  
+(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:foreach)) args)
+  (let* ((loop-var (make-symbol (string-upcase (second (first (first args))))))
+         (*local-variables* (cons loop-var
+                                  *local-variables*))
+         (seq-expr (translate-expression backend (second (first args))))
+         (seqvar (loop-sequence-symbol loop-var))
+         (counter (loop-variable-counter-symbol loop-var)))
+    `(let ((,seqvar ,seq-expr))
+       (if ,seqvar
+           (progn
+             (defvar ,counter 0)
+             (dolist (,loop-var ,seqvar)
+               ,(translate-item backend
+                                (second args))
+               (incf ,counter)))
+           ,(if (third args)
+                (translate-item backend
+                                (third args)))))))
 
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:if-tag)) args)
   "Full copy from common-lisp-backend"

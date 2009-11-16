@@ -7,7 +7,32 @@
 
 (in-package #:closure-template)
 
-(defclass javascript-backend () ())
+(defclass javascript-backend (common-lisp-backend) ())
+
+
+(defparameter *js-print-target* '$template-output$
+  "Name variable for concatenate output strings")
+
+(defparameter *default-js-namespace* '(ps:@ *closurte-template *share)
+  "Default JavaScript namespace")
+
+(defvar *js-namespace* nil
+  "Current JavaScript namespace")
+
+(defparameter *check-js-namespace* t
+  "If true and JavaScript namespace not exists - create namespace")
+
+(defun js-string-to-symbol (str)
+  (make-symbol (coerce (iter (for ch in-string str)
+                             (when (upper-case-p ch)
+                               (collect #\-))
+                             (collect (char-upcase ch)))
+                       'string)))
+
+(defmethod backend-print ((backend javascript-backend) expr)
+  (list 'ps:+=
+        *js-print-target*
+        expr))
 
 (defmethod translate-expression ((backend javascript-backend) expr)
   (if (and (consp expr)
@@ -33,26 +58,6 @@
                                    (collect (translate-expression backend item))))))))
       expr))
 
-(defparameter *js-print-target* '$template-output$)
-
-(defmethod backend-print ((backend javascript-backend) expr)
-  (list 'ps:+=
-        *js-print-target*
-        expr))
-
-(defparameter *default-js-namespace* '(ps:@ *closurte-template *share))
-
-(defparameter *check-js-namespace* t)
-
-(defvar *js-namespace*)
-
-(defun js-string-to-symbol (str)
-  (make-symbol (coerce (iter (for ch in-string str)
-                             (when (upper-case-p ch)
-                               (collect #\-))
-                             (collect (char-upcase ch)))
-                       'string)))
-
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:namespace)) args)
   (let* ((*js-namespace* (if (car args)
                           (cons 'ps:@
@@ -69,10 +74,10 @@
                        (collect (translate-item backend
                                                 fun))))))
 
-(defun loop-variable-counter-symbol (loop-var)
+(defun js-loop-variable-counter-symbol (loop-var)
   (make-symbol (format nil "~A-COUNTER" loop-var)))
 
-(defun loop-sequence-symbol (loop-var)
+(defun js-loop-sequence-symbol (loop-var)
   (make-symbol (format nil "~A-SEQ" loop-var)))
 
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:template)) args)
@@ -84,9 +89,9 @@
            (defvar $data$ (or $$data$$ (ps:create)))
            (defvar $template-output$ "")
            (macrolet ((has-data () '(if $$data$$ t))
-                      (index (var) `,(loop-variable-counter-symbol var))
+                      (index (var) `,(js-loop-variable-counter-symbol var))
                       (is-first (var) `(= 0 (index ,var)))
-                      (is-last (var) `(= (1- (ps:@ ,(loop-sequence-symbol var) length)) (index ,var)))
+                      (is-last (var) `(= (1- (ps:@ ,(js-loop-sequence-symbol var) length)) (index ,var)))
                       (round-closure-template (number &optional digits-after-point)
                         `(if ,digits-after-point
                              (let ((factor (expt 10.0 ,digits-after-point)))
@@ -101,8 +106,8 @@
          (*local-variables* (cons loop-var
                                   *local-variables*))
          (seq-expr (translate-expression backend (second (first args))))
-         (seqvar (loop-sequence-symbol loop-var))
-         (counter (loop-variable-counter-symbol loop-var)))
+         (seqvar (js-loop-sequence-symbol loop-var))
+         (counter (js-loop-variable-counter-symbol loop-var)))
     `(let ((,seqvar ,seq-expr))
        (if ,seqvar
            (progn
@@ -115,27 +120,6 @@
                 (translate-item backend
                                 (third args)))))))
 
-(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:if-tag)) args)
-  "Full copy from common-lisp-backend"
-  (cond
-    ((= (length args) 1) `(when ,(translate-expression backend
-                                                       (first (first args)))
-                            ,(translate-item backend
-                                             (cdr (first args)))))
-    ((and (= (length args) 2)
-          (eql (first (second args)) t)) `(if ,(translate-expression backend
-                                                                     (first (first args)))
-                                              ,(translate-item backend
-                                                               (cdr (first args)))
-                                              ,(translate-item backend
-                                                               (cdr (second args)))))
-    (t (cons 'cond
-             (iter (for v in args)
-                   (collect (list (translate-expression backend
-                                                        (first v))
-                                  (translate-item backend
-                                                  (cdr v)))))))))
-
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:switch-tag)) args)
   `(case ,(translate-expression backend (first args))
      ,@(iter (for clause in (cddr args))
@@ -147,22 +131,6 @@
      ,@(if (second args) (list (list t
                                      (translate-item backend
                                                      (second args)))))))
-
-(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:for-tag)) args)
-  "Full copy from common-lisp-backend"
-  (let* ((loop-var (intern (string-upcase (second (first (first args))))))
-         (*local-variables* (cons loop-var
-                                  *local-variables*))
-         (from-expr (translate-expression backend
-                                          (second (second (first args)))))
-         (below-expr (translate-expression backend
-                                           (third (second (first args)))))
-         (by-expr (translate-expression backend
-                                        (fourth (second (first args))))))
-    `(loop
-        for ,loop-var from ,(if below-expr from-expr 0) below ,(or below-expr from-expr) ,@(if by-expr (list 'by by-expr))
-        do ,(translate-item backend
-                            (cdr args)))))
 
 
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:call)) args)

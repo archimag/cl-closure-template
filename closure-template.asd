@@ -31,7 +31,8 @@
 (defsystem closure-template-test
   :depends-on (#:closure-template #:lift)
   :components ((:module "t"
-                        :components ((:file "core-test")))))
+                        :components ((:file "core-test")
+                                     (:file "cl-backend-test" :depends-on ("core-test"))))))
 
 
 (defmethod perform ((o test-op) (c (eql (find-system 'closure-template-test))))

@@ -72,19 +72,19 @@
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:template)) args)
   (let* ((*template-variables* nil)
          (body (translate-item backend
-                               (cdr args))))
+                                           (cdr args))))
     `(setf (,@*js-namespace* ,(js-string-to-symbol (caar args)))
          (lambda ($$data$$)
            (defvar $data$ (or $$data$$ (ps:create)))
+           (defvar $template-output$ "")
            (macrolet ((has-data () '(if $$data$$ t))
                       (round-closure-template (number &optional digits-after-point)
                         `(if ,digits-after-point
                              (let ((factor (expt 10.0 ,digits-after-point)))
                                (/ (round (* ,number factor)) factor))
-                             (round ,number))))
-             (setf $template-output$ "")
-             ,body
-             $template-output$)))))
+                             (round ,number))))             
+             ,body)
+           $template-output$))))
 
 ;; (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:foreach)) args)
 ;;   (let* ((loop-var (make-symbol (string-upcase (second (first (first args))))))
@@ -121,6 +121,18 @@
                                                         (first v))
                                   (translate-item backend
                                                   (cdr v)))))))))
+
+(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:switch-tag)) args)
+  `(case ,(translate-expression backend (first args))
+     ,@(iter (for clause in (cddr args))
+             (collect (list (if (consp (first clause))
+                                (iter (for i in (first clause))
+                                      (collect (translate-expression backend i)))
+                                (first clause))
+                            (translate-item backend (cdr clause)))))
+     ,@(if (second args) (list (list t
+                                     (translate-item backend
+                                                     (second args)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; translate and compile template methods

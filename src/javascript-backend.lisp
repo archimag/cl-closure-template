@@ -74,8 +74,9 @@
          (body (translate-item backend
                                (cdr args))))
     `(setf (,@*js-namespace* ,(js-string-to-symbol (caar args)))
-         (lambda ($data$)
-           (macrolet ((has-data () '(if $data$ t))
+         (lambda ($$data$$)
+           (defvar $data$ (or $$data$$ (ps:create)))
+           (macrolet ((has-data () '(if $$data$$ t))
                       (round-closure-template (number &optional digits-after-point)
                         `(if ,digits-after-point
                              (let ((factor (expt 10.0 ,digits-after-point)))
@@ -101,6 +102,25 @@
 ;;                   (translate-item backend
 ;;                                   (third args))))))))
 
+(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:if-tag)) args)
+  (cond
+    ((= (length args) 1) `(when ,(translate-expression backend
+                                                       (first (first args)))
+                            ,(translate-item backend
+                                             (cdr (first args)))))
+    ((and (= (length args) 2)
+          (eql (first (second args)) t)) `(if ,(translate-expression backend
+                                                                     (first (first args)))
+                                              ,(translate-item backend
+                                                               (cdr (first args)))
+                                              ,(translate-item backend
+                                                               (cdr (second args)))))
+    (t (cons 'cond
+             (iter (for v in args)
+                   (collect (list (translate-expression backend
+                                                        (first v))
+                                  (translate-item backend
+                                                  (cdr v)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; translate and compile template methods

@@ -108,20 +108,20 @@
   (let* ((loop-var (intern (string-upcase (second (first (first args))))))
          (*local-variables* (cons loop-var
                                   *local-variables*))
-         (seq-expr (translate-expression backend (second (first args)))))
-    (let ((seqvar (gensym "$G")))
-      `(let ((,seqvar ,seq-expr))
-         (if ,seqvar
-             (let ((*loops-vars* (acons ',loop-var (list 0 (1- (length ,seqvar)))
-                                        *loops-vars*)))
-               (loop
-                  for ,loop-var in ,seqvar                  
-                  do ,(translate-item backend
-                                      (second args))
-                  do (incf (index ,loop-var))))
-             ,(if (third args)
-                  (translate-item backend
-                                  (third args))))))))
+         (seq-expr (translate-expression backend (second (first args))))
+         (seqvar (gensym "$G")))
+    `(let ((,seqvar ,seq-expr))
+       (if ,seqvar
+           (let ((*loops-vars* (acons ',loop-var (list 0 (1- (length ,seqvar)))
+                                      *loops-vars*)))
+             (loop
+                for ,loop-var in ,seqvar                  
+                do ,(translate-item backend
+                                    (second args))
+                do (incf (index ,loop-var))))
+           ,(if (third args)
+                (translate-item backend
+                                (third args)))))))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:literal)) args)
   `(write-template-string ,(car args)))

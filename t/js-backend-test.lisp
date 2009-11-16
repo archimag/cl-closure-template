@@ -27,10 +27,11 @@
 (defun test-code->ps (origin)
   (cond
     ((and (consp origin)
-          (eql (car origin) 'funcall)) (list `(,@*current-test* ,(make-symbol (second (second origin))))
-                                             (plist->ps (if (consp (third origin)) 
-                                                            (second (third origin))
-                                                            (third origin)))))
+          (eql (car origin) 'template-call)) (list `(,@*current-test* ,(make-symbol (second origin)))
+                                                   (plist->ps (if (consp (third origin)) 
+                                                                  (second (third origin))
+                                                                  (third origin)))))
+     
     ((consp origin) (iter (for item in origin)
                           (collect (test-code->ps item))))
     (t origin)))

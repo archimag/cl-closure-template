@@ -68,8 +68,11 @@
                  (if *check-js-namespace*
                      (nreverse (iter (for i from (length *js-namespace*) downto 2 )
                                      (collect (let ((part (subseq *js-namespace* 0 i)))
-                                                `(unless ,part
-                                                   (setf ,part (ps:create))))))))
+                                                (if (cddr part)
+                                                    `(when (ps:== (ps:typeof ,part) "undefined")
+                                                       (setf ,part (ps:create)))
+                                                    `(when (ps:== (ps:typeof ,part) "undefined")
+                                                       (defvar ,part (ps:create)))))))))
                  (iter (for fun in (cdr args))
                        (collect (translate-item backend
                                                 fun))))))

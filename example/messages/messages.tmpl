@@ -1,0 +1,89 @@
+// messages.tmpl
+//
+// This file is part of the cl-closure-template library, released under Lisp-LGPL.
+// See file COPYING for details.
+//
+// Author: Moskvitin Andrey <archimag@gmail.com>
+
+{namespace messages}
+
+/*
+ * Main page, show all messages
+ */
+{template show-all-messages}
+   <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+   <html xmlns="http://www.w3.org/1999/xhtml" lang="ru" xml:lang="ru">
+     <head >
+        <title>Closure Template example: Messages</title>
+      	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+        <link type="text/css" rel="stylesheet" href="resources/style.css" />
+
+        <script src="resources/jquery.js" type="text/javascript"></script>
+        <script src="resources/jquery.form.js" type="text/javascript"></script>
+        <script src="resources/templates.js" type="text/javascript"></script>
+        <script src="resources/edit.js" type="text/javascript"></script>
+     </head>
+
+     <body>
+        <h1>Closure Template example: Messages</h1>
+
+        <div id="messages">
+            {foreach $message in $messages}
+                {call show-message data="$message" /}
+            {/foreach}
+        </div>
+
+        <div class="fakelink" id="createmsg">New message</div>
+     </body>
+   </html>
+{/template}
+
+/*
+ * Render one message
+ */
+{template show-message}
+    <div class="message">
+       <div class="fakelink showmsg" href="{$href}">{$title}</div>
+       Author: {$author} 
+    </div>
+{/template}
+
+/*
+ * Render one message with details
+ */
+{template show-message-detail}
+    <div class="message">
+       <strong>{$title}</strong> <br />
+       Author: {$author} <br />
+       {$message}
+    </div>
+{/template}
+
+
+// Create new message form
+{template create-message-form}
+   <form method="post">
+       <table>
+          <tbody>
+             <tr>
+                <td>Title</td>
+                <td><input name="title" size="30"/></td>
+             </tr>
+             <tr>
+                <td>Author</td>
+                <td><input name="author" /></td>
+             </tr>
+             <tr>
+                <td>Content</td>
+                <td><textarea rows="10" cols="80" name="message" /></td>
+             </tr>
+             <tr>
+                <td />
+                <td><input type="submit" value="Создать" /> <input type="button" value="Отмена" id="cancel" /></td>
+             </tr>
+          </tbody>
+       </table>
+   </form>
+{/template}

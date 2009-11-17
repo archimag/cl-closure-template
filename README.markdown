@@ -27,10 +27,10 @@ Sample Code
     
     
     CL-USER> (closure-template:compile-template :javascript-backend *template*)
-    "if (!ClosureTemplate) {
-        ClosureTemplate = {  };
+    "if (typeof ClosureTemplate == 'undefined') {
+         var ClosureTemplate = {  };
     };
-    if (!ClosureTemplate.Example) {
+    if (typeof ClosureTemplate.Example == 'undefined') {
         ClosureTemplate.Example = {  };
     };
     ClosureTemplate.Example.helloName = function ($$data$$) {

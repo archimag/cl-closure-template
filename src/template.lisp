@@ -68,22 +68,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun parse-template-name (str)
-  (or (ppcre:register-groups-bind (name) ("^{template\\s+([\\w-]+)\\s*}$" str)
+  (or (ppcre:register-groups-bind (name) ("^{template\\s+([\\w-]+)\\s*}\\s*$" str)
         (list name))
       (discard-parse-element))) 
 
 (define-mode template (10 :baseonly)
   (:allowed :all)
-  (:entry "{template[^}]*}(?=.*{/template})")
+  (:entry "{template[^}]*}\\s*(?=.*{/template})")
   (:entry-attribute-parser parse-template-name)
-  (:exit "{/template}"))
+  (:exit "\\s*{/template}"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; substition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-mode space-tag (20 :all)
-  (:single "{sp}"))
+  (:single "\\s*{sp}\\s*"))
 
 (define-mode emptry-string (20 :all)
   (:single "{nil}"))
@@ -92,10 +92,10 @@
   (:single "{\\\\r}"))
 
 (define-mode line-feed (20 :all)
-  (:single "{\\\\n}"))
+  (:single "\\s*{\\\\n}\\s*"))
 
 (define-mode tab (20 :all)
-  (:single "{\\\\t}"))
+  (:single "\\s*{\\\\t}\\s*"))
 
 (define-mode left-brace (20 :all)
   (:single "{lb}"))

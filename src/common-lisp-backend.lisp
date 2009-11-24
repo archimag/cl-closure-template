@@ -13,6 +13,26 @@
 
 (defvar *loops-vars* nil)
 
+(defun escape-html (str)
+  (with-output-to-string (out)
+    (iter (for ch in-string str)
+          (case ch
+            ((#\<) (write-string "&lt;" out))
+            ((#\>) (write-string "&gt;" out))
+            ((#\") (write-string "&quot;" out))
+            ((#\') (write-string "&#039;" out))
+            ((#\&) (write-string "&amp;" out))
+            (otherwise (write-char ch out))))))
+
+(defun escape-uri (str)
+  (with-output-to-string (out)
+    (iter (for ch in-string str)
+          (if (or (char<= #\0 ch #\9) (char<= #\a ch #\z) (char<= #\A ch #\Z)
+                  (find ch "$-_.!*'()" :test #'char=))
+              (write-char ch out)
+              (let ((octets (sb-ext:string-to-octets (string ch) :external-format :utf-8)))
+                (format out "%~2,'0x%~2,'0x" (aref octets 0) (aref octets 1)))))))
+
 (defun make-template-package (&optional (name "CLOSURE-TEMPLATE.SHARE") &aux (upname (string-upcase name)))
   (or (find-package upname)
       (eval `(defpackage ,(if name

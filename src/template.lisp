@@ -118,10 +118,26 @@
 ;;;; print
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun parse-print-directive (str)
+  (cond
+    ((string= str "noAutoescape") '(:no-autoescape . t))
+    ((string= str "id") '(:id . t))
+    ((string= str "escapeHtml") '(:escape-html . t))
+    ((string= str "escapeUri") '(:escape-uri . t))
+    ((string= str "escapeJs") '(:escape-js . t))
+    (t (or (ppcre:register-groups-bind (count) ("^insertWordBreaks:(\\d+)$" str)
+             (if count
+                 (cons :insert-word-breaks (parse-integer count))))
+           nil))))
+
 (defun print-tag-post-handler (obj)
-  (or (ppcre:register-groups-bind (expr) ("^{(?:print\\s+)?(.+)}$" (second obj))
-        (list (car obj)
-              (parse-expr-or-discard expr)))
+  (or (ppcre:register-groups-bind (expr directives) ("^{(?:print\\s+)?([^\\|]+)((?:\\s*\\|[\\w:]*)*)\\s*}$" (second obj))
+        (list* (car obj)              
+               (parse-expr-or-discard expr)
+               (alexandria:alist-plist
+                (iter (for directive in (cdr (split-sequence:split-sequence #\| directives)))
+                      (let ((pd (parse-print-directive (string-trim #(#\Space #\Tab #\Newline #\Return) directive))))
+                        (collect pd))))))
       (discard-parse-element)))
 
 (define-mode print-tag (200 :all)

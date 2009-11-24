@@ -216,6 +216,32 @@
                  (closure-template.parser:print-tag (+ 2 2)))
                (parse-single-template "{template test}{2 + 2}{/template}")))
 
+(addtest (template-parser-test)
+  print-3
+  (ensure-same '(closure-template.parser:template ("test") 
+                 (closure-template.parser:print-tag (+ 2 2)
+                  :no-autoescape t))
+               (parse-single-template "{template test}{2 + 2 |noAutoescape}{/template}")))
+
+(addtest (template-parser-test)
+  print-4
+  (ensure-same '(closure-template.parser:template ("test") 
+                 (closure-template.parser:print-tag (+ 2 2)
+                  :id t))
+               (parse-single-template "{template test}{2 + 2 |id}{/template}")))
+
+(addtest (template-parser-test)
+  print-5
+  (ensure-same '(closure-template.parser:template ("test") 
+                 (closure-template.parser:print-tag (+ 2 2)
+                  :no-autoescape t
+                  :id t
+                  :escape-html t
+                  :escape-uri t
+                  :escape-js t
+                  :insert-word-breaks 5))
+               (parse-single-template "{template test}{2 + 2 |noAutoescape |id |escapeHtml |escapeUri |escapeJs  |insertWordBreaks:5}{/template}")))
+
 ;;;; literal
 
 (addtest (template-parser-test)

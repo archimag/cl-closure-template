@@ -98,8 +98,7 @@
       expr))
 
 
-(defmethod backend-print ((backend common-lisp-backend) expr)
-  (warn "autoescape: ~A" *autoescape*)
+(defmethod backend-print ((backend common-lisp-backend) expr &optional directives)
   (if *autoescape*
       `(write-template-string (escape-html ,expr))
       `(write-template-string ,expr)))

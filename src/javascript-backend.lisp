@@ -29,10 +29,16 @@
                              (collect (char-upcase ch)))
                        'string)))
 
-(defmethod backend-print ((backend javascript-backend) expr)
+(defmethod backend-print ((backend javascript-backend) expr &optional directives)
+  (declare (ignore directives))
   (list 'ps:+=
         *js-print-target*
-        expr))
+        (if *autoescape*
+            `(let ((val ,expr))
+               (if (ps:== (ps:typeof val) "string")
+                   ((ps:@ ((ps:@ ((ps:@ ((ps:@ ((ps:@ val replace) (ps:regex "/&/g") "&amp;") replace) (ps:regex "/</g") "&lt;") replace) (ps:regex "/>/g") "&gt;") replace) (ps:regex "/\"/g") "&quot;") replace) (ps:regex "/'/g") "&#039;")
+                   val))
+            expr)))
 
 (defmethod translate-expression ((backend javascript-backend) expr)
   (if (and (consp expr)
@@ -85,8 +91,11 @@
 
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:template)) args)
   (let* ((*template-variables* nil)
-         (body (translate-item backend
-                                           (cdr args))))
+         (body (let ((*autoescape* (if (find :autoescape (cdar args))
+                                       (getf (cdar args) :autoescape)
+                                       *autoescape*)))
+                 (translate-item backend
+                                 (cdr args)))))
     `(setf (,@*js-namespace* ,(js-string-to-symbol (caar args)))
          (lambda ($$data$$)
            (defvar $data$ (or $$data$$ (ps:create)))

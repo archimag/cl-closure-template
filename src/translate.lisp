@@ -17,7 +17,7 @@
   (:method(backend item args)))
    
 
-(defgeneric backend-print (backend expr))
+(defgeneric backend-print (backend expr &optional directives))
 
 (defgeneric translate-expression (backend expr))
 

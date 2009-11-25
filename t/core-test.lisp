@@ -188,6 +188,23 @@
 
 (deftestsuite template-parser-test (closure-template-test) ())
 
+;;;; template with paramas
+
+(addtest (template-parser-test)
+  template-1
+  (ensure-same '(closure-template.parser:template ("test" :autoescape t))
+               (parse-single-template "{template test autoescape=\"true\"}{/template}")))
+
+(addtest (template-parser-test)
+  template-2
+  (ensure-same '(closure-template.parser:template ("test" :private nil))
+               (parse-single-template "{template test private=\"false\"}{/template}")))
+
+(addtest (template-parser-test)
+  template-3
+  (ensure-same '(closure-template.parser:template ("test" :autoescape nil :private t))
+               (parse-single-template "{template test autoescape=\"false\" private=\"true\"}{/template}")))
+
 ;;;; substitions
 
 (addtest (template-parser-test)

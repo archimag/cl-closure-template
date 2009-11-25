@@ -68,9 +68,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun parse-template-name (str)
-  (or (ppcre:register-groups-bind (name) ("^{template\\s+([\\w-]+)\\s*}\\s*$" str)
-        (list name))
-      (discard-parse-element))) 
+  (or (ppcre:register-groups-bind (name params) ("^{template\\s+([\\w-]+)((?:\\s+\\w+=\"\\w+\")*)\\s*}$" str)
+        (cons name
+              (iter (for param in (ppcre:all-matches-as-strings "\\w+=\"\\w+\"" params))
+                    (let* ((pos (position #\= param))
+                           (name (subseq param 0 pos))
+                           (value (subseq param (+ pos 2) (1- (length param)))))
+                      (collect (intern (string-upcase name) :keyword))
+                      (collect (cond
+                                 ((string= value "true") t)
+                                 ((string= value "false") nil)
+                                 (t (discard-parse-element))))))))
+      (discard-parse-element)))
 
 (define-mode template (10 :baseonly)
   (:allowed :all)

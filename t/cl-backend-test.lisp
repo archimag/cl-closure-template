@@ -48,6 +48,15 @@
                  (template-call "TEST"
                                 '(:arg "<&\"'>")))))
 
+(addtest (common-lisp-backend-test)
+  print-4
+  (ensure-same "<&\"'>"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{$arg|noAutoescape}{/template}")
+                 (template-call "TEST"
+                                '(:arg "<&\"'>")))))
+
 
 ;;;; comment
 

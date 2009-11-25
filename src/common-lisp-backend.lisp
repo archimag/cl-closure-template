@@ -99,9 +99,13 @@
 
 
 (defmethod backend-print ((backend common-lisp-backend) expr &optional directives)
-  (if *autoescape*
-      `(write-template-string (escape-html ,expr))
-      `(write-template-string ,expr)))
+  (case (or (getf directives :escape-mode)
+            (if *autoescape* :escape-html :no-autoescape))
+    (:no-autoescape `(write-template-string ,expr))
+    (:escape-id `(write-template-string (escape-uri-component ,expr)))
+    (:escape-uri `(write-template-string (escape-uri ,expr)))
+    (:escape-html `(write-template-string (escape-html ,expr)))))
+
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:namespace)) args)
   (let ((*package* (if (car args)

@@ -77,5 +77,12 @@
 
 (defmethod translate-named-item (backend (item (eql 'closure-template.parser:print-tag)) args)
   (backend-print backend
-                 (translate-expression backend (car args))))
+                 (translate-expression backend (car args))
+                 (list :escape-mode
+                       (cond
+                         ((getf (cdr args) :no-autoescape) :no-autoescape)
+                         ((getf (cdr args) :id) :id)
+                         ((getf (cdr args) :escape-html) :escape-html)
+                         ((getf (cdr args) :escape-uri) :escape-uri)
+                         ((getf (cdr args) :escape-js) :escape-js)))))
 

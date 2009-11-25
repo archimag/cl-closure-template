@@ -14,24 +14,35 @@
 (defvar *loops-vars* nil)
 
 (defun escape-html (str)
-  (with-output-to-string (out)
-    (iter (for ch in-string str)
-          (case ch
-            ((#\<) (write-string "&lt;" out))
-            ((#\>) (write-string "&gt;" out))
-            ((#\") (write-string "&quot;" out))
-            ((#\') (write-string "&#039;" out))
-            ((#\&) (write-string "&amp;" out))
-            (otherwise (write-char ch out))))))
+  (if (stringp str)
+      (with-output-to-string (out)
+        (iter (for ch in-string str)
+              (case ch
+                ((#\<) (write-string "&lt;" out))
+                ((#\>) (write-string "&gt;" out))
+                ((#\") (write-string "&quot;" out))
+                ((#\') (write-string "&#039;" out))
+                ((#\&) (write-string "&amp;" out))
+                (otherwise (write-char ch out)))))
+      str))
+
+(defun escape-string (str not-encode)
+  (if (stringp str)
+      (with-output-to-string (out)
+        (iter (for ch in-string str)
+              (if (or (char<= #\0 ch #\9) (char<= #\a ch #\z) (char<= #\A ch #\Z)
+                      (find ch not-encode :test #'char=))
+                  (write-char ch out)
+                  (let ((octets (sb-ext:string-to-octets (string ch) :external-format :utf-8)))
+                    (format out "%~2,'0x%~2,'0x" (aref octets 0) (aref octets 1))))))
+      str))
+  
 
 (defun escape-uri (str)
-  (with-output-to-string (out)
-    (iter (for ch in-string str)
-          (if (or (char<= #\0 ch #\9) (char<= #\a ch #\z) (char<= #\A ch #\Z)
-                  (find ch "$-_.!*'()" :test #'char=))
-              (write-char ch out)
-              (let ((octets (sb-ext:string-to-octets (string ch) :external-format :utf-8)))
-                (format out "%~2,'0x%~2,'0x" (aref octets 0) (aref octets 1)))))))
+  (escape-string str "~!@#$&*()=:/,;?+'"))
+
+(defun escape-uri-component (str)
+  (escape-string str "~!*()'"))
 
 (defun make-template-package (&optional (name "CLOSURE-TEMPLATE.SHARE") &aux (upname (string-upcase name)))
   (or (find-package upname)
@@ -88,8 +99,10 @@
 
 
 (defmethod backend-print ((backend common-lisp-backend) expr)
-  (list 'write-template-string
-        expr))
+  (warn "autoescape: ~A" *autoescape*)
+  (if *autoescape*
+      `(write-template-string (escape-html ,expr))
+      `(write-template-string ,expr)))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:namespace)) args)
   (let ((*package* (if (car args)
@@ -102,10 +115,13 @@
                             
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:template)) args)
-  (let* ((*template-variables* nil)
-         (body `(with-output-to-string (*template-output*)
-                  ,(translate-item backend
-                                   (cdr args))))
+  (let* ((*template-variables* nil)         
+         (body (let ((*autoescape* (if (find :autoescape (cdar args))
+                                       (getf (cdar args) :autoescape)
+                                       *autoescape*)))
+                 `(with-output-to-string (*template-output*)
+                    ,(translate-item backend
+                                     (cdr args)))))
          (binds (iter (for var in *template-variables*)
                       (collect (list (find-symbol (symbol-name var) *package*)
                                      `(getf $data$ ,var))))))

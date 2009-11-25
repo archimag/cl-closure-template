@@ -9,6 +9,8 @@
 
 (defvar *template-output*)
 
+(defvar *autoescape* t)
+
 (defgeneric translate-item (backend item))
 
 (defgeneric translate-named-item (backend item args)

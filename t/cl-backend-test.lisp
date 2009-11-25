@@ -19,15 +19,35 @@
   (funcall (find-symbol name *default-translate-package*)
            data))
 
-;;;; simple
+;;;; print
 
 (addtest (common-lisp-backend-test)
-  hello-world
+  print-1
   (ensure-same "Hello world"
                (progn
                  (compile-template :common-lisp-backend
                                    "{template hello-world}Hello world{/template}")
                  (template-call "HELLO-WORLD"))))
+
+
+(addtest (common-lisp-backend-test)
+  print-2
+  (ensure-same "&lt;&amp;&quot;&#039;&gt;"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{$arg}{/template}")
+                 (template-call "TEST"
+                                '(:arg "<&\"'>")))))
+
+(addtest (common-lisp-backend-test)
+  print-3
+  (ensure-same "<&\"'>"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test autoescape=\"false\"}{$arg}{/template}")
+                 (template-call "TEST"
+                                '(:arg "<&\"'>")))))
+
 
 ;;;; comment
 
@@ -147,17 +167,6 @@ Hello world{/template}")
                  (compile-template :common-lisp-backend
                                    "{template substitions}{sp}{nil}{\\r}{\\n}{\\t}{lb}{rb}{/template}")
                  (template-call "SUBSTITIONS"))))
-
-;;;; print
-            
-(addtest (common-lisp-backend-test)
-  hello-name
-  (ensure-same "Hello Closure Template"
-               (progn
-                 (compile-template :common-lisp-backend
-                                   "{template hello-name}Hello {$name}{/template}")
-                 (template-call "HELLO-NAME"
-                                '(:name "Closure Template")))))
 
 ;;;; dotted variables
 

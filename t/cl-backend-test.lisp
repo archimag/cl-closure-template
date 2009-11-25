@@ -19,19 +19,28 @@
   (funcall (find-symbol name *default-translate-package*)
            data))
 
-;;;; print
+;;;; simple
 
 (addtest (common-lisp-backend-test)
-  print-1
+  simple-1
   (ensure-same "Hello world"
                (progn
                  (compile-template :common-lisp-backend
                                    "{template hello-world}Hello world{/template}")
                  (template-call "HELLO-WORLD"))))
 
+(addtest (common-lisp-backend-test)
+  simple-2
+  (ensure-same "<Hello world>"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template hello-world}<Hello world>{/template}")
+                 (template-call "HELLO-WORLD"))))
+
+;;;; print
 
 (addtest (common-lisp-backend-test)
-  print-2
+  print-1
   (ensure-same "&lt;&amp;&quot;&#039;&gt;"
                (progn
                  (compile-template :common-lisp-backend
@@ -40,7 +49,7 @@
                                 '(:arg "<&\"'>")))))
 
 (addtest (common-lisp-backend-test)
-  print-3
+  print-2
   (ensure-same "<&\"'>"
                (progn
                  (compile-template :common-lisp-backend
@@ -49,7 +58,7 @@
                                 '(:arg "<&\"'>")))))
 
 (addtest (common-lisp-backend-test)
-  print-4
+  print-3
   (ensure-same "<&\"'>"
                (progn
                  (compile-template :common-lisp-backend
@@ -382,3 +391,12 @@ Hello world{/template}")
 {template test}{call hello-name data=\"all\"/}{/template}")
                  (template-call "TEST"
                                 '(:name "Masha")))))
+
+(addtest (common-lisp-backend-test)
+  call-5
+  (ensure-same "<strong>Hello world</strong>"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template hello}<strong>Hello world</strong>{/template}
+{template test}{call hello /}{/template}")
+                 (template-call "TEST"))))

@@ -61,7 +61,8 @@
 
 (defmethod translate-item (backend (item string))
   (backend-print backend
-                 item))
+                 item
+                 '(:escape-mode :no-autoescape)))
 
 (defmethod translate-item (backend (symbol symbol))
   (backend-print backend

@@ -237,7 +237,8 @@
                               'data)))
        ,(backend-print backend
                        (list fun-name
-                             'data)))))
+                             'data)
+                       (list :escape-mode :no-autoescape)))))
                       
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

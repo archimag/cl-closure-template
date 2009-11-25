@@ -158,7 +158,8 @@
         (backend-print backend
                        (if data-param
                            (list fun-name data-param)
-                           (list fun-name)))
+                           (list fun-name))
+                       (list :escape-mode :no-autoescape))
         (let ((call-expr '((defvar _$data$_ (ps:create)))))
           (if data-param
               (let ((lvar (gensym "$_")))
@@ -182,7 +183,8 @@
                                   call-expr))))))
           `(progn ,@(reverse call-expr)
                   ,(backend-print backend
-                                  (list fun-name '_$data$_)))))))
+                                  (list fun-name '_$data$_)
+                                  (list :escape-mode :no-autoescape)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; translate and compile template methods

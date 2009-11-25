@@ -68,7 +68,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun parse-template-name (str)
-  (or (ppcre:register-groups-bind (name params) ("^{template\\s+([\\w-]+)((?:\\s+\\w+=\"\\w+\")*)\\s*}$" str)
+  (or (ppcre:register-groups-bind (name params) ("^{template\\s+([\\w-]+)((?:\\s+\\w+=\"\\w+\")*)\\s*}\\s*$" str)
         (cons name
               (iter (for param in (ppcre:all-matches-as-strings "\\w+=\"\\w+\"" params))
                     (let* ((pos (position #\= param))

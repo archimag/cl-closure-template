@@ -205,6 +205,13 @@
   (ensure-same '(closure-template.parser:template ("test" :autoescape nil :private t))
                (parse-single-template "{template test autoescape=\"false\" private=\"true\"}{/template}")))
 
+(addtest (template-parser-test)
+  template-4
+  (ensure-same '(closure-template.parser:template ("test") "Hello")
+               (parse-single-template "{template test}
+    Hello
+{/template}")))
+
 ;;;; substitions
 
 (addtest (template-parser-test)

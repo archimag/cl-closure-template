@@ -1,3 +1,9 @@
+;;;; closure-template-html-mode.el
+;;;;
+;;;; This file is part of the cl-closure-template library, released under Lisp-LGPL.
+;;;; See file COPYING for details.
+;;;;
+;;;; Author: Moskvitin Andrey <archimag@gmail.com>
 
 (require 'sgml-mode)
 
@@ -23,7 +29,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defface closure-template-tag
-  '((t (:inherit font-lock-keyword-face :bold t)))
+  '((t (:inherit font-lock-type-face :bold t)))
   "`closure-template-html-mode' face used to highlight the tags."
   :group 'closure-template-html)
 

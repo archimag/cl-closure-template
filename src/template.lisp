@@ -95,10 +95,10 @@
   (:single "\\s*{sp}\\s*"))
 
 (define-mode emptry-string (20 :all)
-  (:single "{nil}"))
+  (:single "\\s*{nil}\\s*"))
 
 (define-mode carriage-return (20 :all)
-  (:single "{\\\\r}"))
+  (:single "\\s*{\\\\r}\\s*"))
 
 (define-mode line-feed (20 :all)
   (:single "\\s*{\\\\n}\\s*"))

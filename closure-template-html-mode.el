@@ -82,7 +82,7 @@
               "{\\t}"
               "{lb}"
               "{rb}"))
-     . font-lock-constant-face)))
+     . closure-template-tag-face)))
 
 (defvar *closure-template-foreach-keywords*
   `((,(rx "{"

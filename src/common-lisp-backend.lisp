@@ -112,7 +112,11 @@
                        (make-template-package (car args))
                        *default-translate-package*)))
     (iter (for tmpl in (cdr args))
-          (export (intern (string-upcase (car (second tmpl))))))
+          (let ((symbol(intern (string-upcase (car (second tmpl))))))
+            (export symbol)
+            (proclaim (list 'ftype
+                            'function
+                            symbol))))
     (translate-item backend
                   (cdr args))))
                             

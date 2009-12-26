@@ -1,0 +1,30 @@
+// -*- mode: closure-template-html -*-
+
+{namespace closure-template.standard}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * XHTML 1.0 Strict frame
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+{template xhtml-strict-frame}
+    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+    {\n}
+    <html xmlns="http://www.w3.org/1999/xhtml" lang="ru" xml:lang="ru">
+	    <head>
+      	    <meta http-equiv="Content-Type" content="text/html; charset={$charset ? $charset : 'utf-8'}" />
+
+            {if $title}
+                <title>{$title}</title>
+            {/if}
+
+            {foreach $item in $css}
+                <link href="{$item}" rel="stylesheet" type="text/css" />
+            {/foreach}
+	    </head>
+
+	    <body>
+            {$body |noAutoescape}
+        </body>
+    </html>
+{/template}
+

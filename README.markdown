@@ -2,6 +2,9 @@ cl-closuret-template - Common Lisp implementation of Closure Template from Googl
 
 Sample Code
 -------------------------
+     CL-USER> (asdf:operate 'asdf:load-op '#:closure-template)
+
+     CL-USER> (asdf:operate 'asdf:load-op '#:parenscript)
 
      CL-USER> (defparameter *template* "
      /*

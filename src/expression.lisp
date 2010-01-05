@@ -97,12 +97,12 @@
 
 (defun symbol-char-p (x)
   (or (alphanumericp x)
-      (find x "$")))
+      (find x "$_")))
 
 (defun string-delimiter-char-p (x) (char= x #\'))
 
 (defun parse-var (string i)
-  (let ((j (position-if-not #'alphanumericp string :start (1+ i))))
+  (let ((j (position-if-not #'symbol-char-p string :start (1+ i))))
     (values (make-expression-symbol (subseq string i j)) j)))
 
 

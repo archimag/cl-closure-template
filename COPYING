@@ -1,4 +1,4 @@
-cl-closure-template - Common Lisp implementation of Closure Template from Google
+cl-closure-template - Common Lisp implementation of Google's Closure Templates.
 
 Copyright (c) 2009 Moskvitin Andrey
 

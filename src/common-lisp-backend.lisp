@@ -33,7 +33,7 @@
               (if (or (char<= #\0 ch #\9) (char<= #\a ch #\z) (char<= #\A ch #\Z)
                       (find ch not-encode :test #'char=))
                   (write-char ch out)
-                  (iter (for octet in-vector (sb-ext:string-to-octets (string ch) :external-format :utf-8))
+                  (iter (for octet in-vector (babel:string-to-octets (string ch) :encoding :utf-8))
                           (format out "%~2,'0x" octet)))))
       str))
   

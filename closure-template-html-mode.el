@@ -5,6 +5,9 @@
 ;;;;
 ;;;; Author: Moskvitin Andrey <archimag@gmail.com>
 
+(require 'apropos)
+(require 'font-lock)
+
 (require 'sgml-mode)
 
 (defgroup closure-template-html nil
@@ -37,11 +40,7 @@
 
 
 (defvar *closure-template-comment-keywords*
-  `(("//.*" . font-lock-comment-face)
-    (,(rx "/*"
-          (*? anything)
-          "*/")
-     . font-lock-comment-face)))
+  `(("//.*" . font-lock-comment-face)))
 
 (defvar *closure-template-namespace-keywords*
   `((,(rx "{"
@@ -143,14 +142,30 @@
   :group 'closure-template-html
 
   ;; it mainly from sgml-mode font lock setting
-  (set (make-local-variable 'font-lock-defaults)
-       `((closure-template-html-font-lock-keywords
-          closure-template-html-font-lock-keywords-1
-          closure-template-html-font-lock-keywords-2
-          ,(closure-template-html-font-lock-keywords-3))
-         nil t nil nil
-         (font-lock-syntactic-keywords
-          . sgml-font-lock-syntactic-keywords))))
+  (make-local-variable 'font-lock-defaults)
+  (setq font-lock-defaults
+        `((closure-template-html-font-lock-keywords
+           closure-template-html-font-lock-keywords-1
+           closure-template-html-font-lock-keywords-2
+           ,(closure-template-html-font-lock-keywords-3))
+          nil t nil nil
+          (font-lock-syntactic-keywords
+           . sgml-font-lock-syntactic-keywords)))
+
+  ;; Setting up syntax recognition
+  (make-local-variable 'comment-start)
+  (make-local-variable 'comment-end)
+  (make-local-variable 'comment-start-skip)
+
+  (setq comment-start "/* "
+	comment-end " */"
+	comment-start-skip "/\\*[ \n\t]+")
+  ;; Setting up syntax table
+  (modify-syntax-entry ?* ". 23")
+  (modify-syntax-entry ?/ ". 14")
+
+
+  )
 
 
 (provide 'closure-template-html-mode)

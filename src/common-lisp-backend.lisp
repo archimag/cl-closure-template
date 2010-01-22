@@ -139,8 +139,8 @@
 			`(let ((,g-str ,str))
 			   (cond
 			     ((typep ,g-str 'float)
-			      (let ((*read-default-float-format* 'double-float))
-				(format *template-output* "~A" (coerce ,g-str 'double-float))))
+			      (let ((*read-default-float-format* (type-of ,g-str)))
+				(format *template-output* "~A" ,g-str)))
 			     (,g-str (format *template-output* "~A" ,g-str))))))
                     (random-int (arg) `(random ,arg))
                     (has-data () '(not (null $data$)))

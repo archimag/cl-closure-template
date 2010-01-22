@@ -13,7 +13,7 @@
 (defparameter *js-print-target* '$template-output$
   "Name variable for concatenate output strings")
 
-(defparameter *default-js-namespace* '(ps:@ *closurte-template *share)
+(defparameter *default-js-namespace* '(ps:@ *closure-template *share)
   "Default JavaScript namespace")
 
 (defvar *js-namespace* nil

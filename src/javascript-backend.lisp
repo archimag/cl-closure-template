@@ -56,9 +56,14 @@
           (:variable (if (find (second expr) *local-variables* :test #'string=)
                          (make-symbol (symbol-name (second expr)))
                          `(ps:@ $data$ ,(make-symbol (string-upcase (second expr))))))
-          (getf `(,@(translate-expression backend
-                                          (second expr) )
-                    ,(make-symbol (string-upcase (third expr)))))
+          (getf `(,@(let ((tr (translate-expression backend
+						    (second expr))))
+			 (cond ((symbolp tr) (list 'ps:@ tr))
+			       ((and (listp tr)
+			 	     (eql (car tr) 'ps:@))
+			 	tr)
+			       (t (list* 'ps:@ tr))))
+		    ,(make-symbol (string-upcase (third expr)))))
           (otherwise (cons (or (find-symbol (symbol-name key)
                                             '#:closure-template)
                                (error "Bad keyword ~A" key))

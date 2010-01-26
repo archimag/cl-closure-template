@@ -206,6 +206,16 @@ Hello world{/template}")
                  (template-call "DOTTED"
                                 '(:obj (:msg (:first "Hello" :second "world")))))))
 
+;;;; local variables handling
+(addtest (common-lisp-backend-test)
+  local-vars-1
+  (ensure-same "56"
+	       (progn
+		 (compile-template :common-lisp-backend
+				   "{template local}{foreach $b in $c}{$b.d}{/foreach}{/template}")
+		 (template-call "LOCAL"
+				'(:c ((:d 5) (:d 6)))))))
+
 ;;;; if
 
 (addtest (common-lisp-backend-test)

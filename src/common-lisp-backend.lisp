@@ -135,8 +135,13 @@
     `(defun ,(intern (string-upcase (caar args))) (,@(unless binds '(&optional)) $data$)
        (let ((*loops-vars* nil) ,@binds)
          (macrolet ((write-template-string (str)
-                      `(when ,str
-                         (format *template-output* "~A" ,str)))
+		      (let ((g-str (gensym)))
+			`(let ((,g-str ,str))
+			   (cond
+			     ((typep ,g-str 'float)
+			      (let ((*read-default-float-format* (type-of ,g-str)))
+				(format *template-output* "~A" ,g-str)))
+			     (,g-str (format *template-output* "~A" ,g-str))))))
                     (random-int (arg) `(random ,arg))
                     (has-data () '(not (null $data$)))
                     (index (s) `(second (assoc ',s *loops-vars*)))

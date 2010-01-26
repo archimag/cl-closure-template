@@ -311,7 +311,7 @@ Hello world{/template}")
 
 (addtest (common-lisp-backend-test)
   foreach-3
-  (ensure-same '"012"
+  (ensure-same "012"
                (progn
                  (compile-template :common-lisp-backend
                                    "{template test}{foreach $opernand in $opernands}{index($opernand)}{/foreach}{/template}")

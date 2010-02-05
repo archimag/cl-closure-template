@@ -1,6 +1,6 @@
 cl-closure-template - Common Lisp implementation of Google's Closure Templates.
 
-Copyright (c) 2009 Moskvitin Andrey
+Copyright (c) 2009-2010 Moskvitin Andrey
 
 Preamble to the Gnu Lesser General Public License
 

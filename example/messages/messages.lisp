@@ -5,26 +5,22 @@
 ;;;;
 ;;;; Author: Moskvitin Andrey <archimag@gmail.com>
 
+
 (require 'asdf)
 
-;; load restas (http://github.com/archimag/restas) web framework 
-(asdf:operate 'asdf:load-op '#:restas) 
+(loop for system in '(#:closure-template ;; http://code.google.com/p/cl-closure-template/
+                      #:parenscript      ;; http://common-lisp.net/project/parenscript/
+                      #:restas           ;; http://www.cliki.net/RESTAS
+                      )
+   do (asdf:operate 'asdf:load-op system))
 
-(asdf:operate 'asdf:load-op '#:closure-template)
-(asdf:operate 'asdf:load-op '#:parenscript)
-
-;; define site
 (restas:defsite #:example.messages
   (:use :cl))
 
-;; yes, site it is package...
-(in-package #:example.messages)
-
-;; little magic
-(restas:define-site-plugin default (#:example.messages))
-
-;;; start site
 (restas:start-site '#:example.messages :port 8080)
+
+
+(in-package #:example.messages)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; params

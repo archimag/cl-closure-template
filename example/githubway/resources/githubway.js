@@ -5,9 +5,7 @@
 //
 // Author: Moskvitin Andrey <archimag@gmail.com>
 
-// show message detail
-
-
+/*
 function updateJSONFields (json) {
     delete json.json;
 
@@ -26,54 +24,81 @@ function updateJSONFields (json) {
 
     return json;
 }
+*/
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * PObject
+ * EObject
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-function JObject (editor, node) {
-    if (editor) {
-        this.editor = editor;
+function EObject (node) {
+    if (node) {
         this.node = node;
     }
 }
 
-JObject.prototype._asJSON = function () {
-    return $.evalJSON(this.node.attr("json"));
-};
-
-
-JObject.prototype.asJSON = function () {
-    var data = this._asJSON();
+EObject.prototype.modelData = function () {
+    var data = $.evalJSON(this.node.attr("json"))
     data.json = $.toJSON(data);
     return data;
 };
 
-
-JObject.prototype.rect = function () {
-    throw "Method rect not implemeted";
+EObject.prototype.toHTML = function (data) {
+    throw "Method toHTML not implemented";
 };
 
-JObject.prototype.rtree = function () {
-    throw "Method rtree not implemented";
+EObject.prototype.editForm = function (data) {
+    throw "Method editForm not implemented";
 };
 
-JObject.prototype.toSVG = function (data) {
-    throw "Method svg not implemented";
-};
-
-JObject.prototype.cleanReferences = function () { };
-
-JObject.prototype.registerReferences = function () { };
-
-JObject.prototype.setJSON = function (json) {
-    updateJSONFields(json);
-
-    this.clearReferences();
-
-    this.node.after(this.toSVG(json));
+EObject.prototype.replaceHTML = function (html) {
+    this.node.after(html);
     this.node = this.node.next();
     this.node.prev().remove();
-
-    this.registerReferences();
 };
+
+EObject.prototype.startEdit = function () {
+    this.replaceHTML(this.editForm(this.modelData()));
+
+    var obj = this;
+
+    $('.cancel:first', this.node).click(function (evt) { obj.endEdit(); });
+
+    this.node.ajaxForm({
+        dataType: 'json', 
+        success: function (data) { obj.endEdit(data)},
+        error: function () { alert("Не удалось сохранить данные"); obj.endEdit() }
+    });
+};
+
+EObject.prototype.endEdit = function (data) {
+    this.replaceHTML(this.toHTML(data || this.modelData()));
+    this.constructor(this.node);
+};
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * EditableText
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+function EditableText (node) {
+    if (node) {
+        EObject.prototype.constructor.call(this, node);
+        var obj = this;
+        this.node.click(function (evt) { obj.startEdit(); });
+    }
+}
+
+EditableText.prototype = new EObject;
+
+EditableText.prototype.constructor = EditableText;
+
+EditableText.prototype.toHTML = example.githubway.view.editableText;
+
+EditableText.prototype.editForm = example.githubway.view.editText;
+    
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * init
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+$(document).ready(function () {
+    $(".editable-text").each( function (i, node) { new EditableText($(node)); })
+});

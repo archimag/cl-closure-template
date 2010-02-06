@@ -22,20 +22,43 @@
 
         <link type="text/css" rel="stylesheet" href="resources/style.css" />
 
-        <script src="resources/jquery.js" type="text/javascript"></script>
-        <script src="resources/jquery.form.js" type="text/javascript"></script>
+        <script src="jquery/jquery.js" type="text/javascript"></script>
+        <script src="jquery/jquery.form.js" type="text/javascript"></script>
+        <script src="jquery/jquery.json.js" type="text/javascript"></script>
         <script src="resources/templates.js" type="text/javascript"></script>
-        <script src="resources/edit.js" type="text/javascript"></script>
+        <script src="resources/githubway.js" type="text/javascript"></script>
      </head>
 
      <body>
         <h1>Closure Template example: GithubWay controls</h1>
 
+        {call editable-text data="$name" /}
 
+        {call editable-text data="$email" /}
      </body>
    </html>
 {/template}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * General template
+ * editable text template
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+{template editable-text}
+   <div class="editable-text" json="{$json}">
+       <p>
+           {$value}
+           <em class="edit-text">click to edit</em>
+       </p>       
+   </div>
+{/template}
+
+{template edit-text}
+   <form method="post" action="{$saveLink}" json="{$json}">
+       <input type="text" value="{$value}" name="value"></input>
+
+       <div class="form-actions">
+           <input type="submit" class="minibutton save" value="Save"></input>
+           <span class="fakelink cancel">cancel</span>
+       </div>
+   </form>
+{/template}

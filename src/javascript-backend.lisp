@@ -197,7 +197,7 @@
 
 (defmethod translate-template ((backend (eql :javascript-backend)) template)
   (translate-template (make-instance 'javascript-backend)
-                    template))
+                      template))
 
 (defmethod compile-template ((backend (eql :javascript-backend)) template)
   (compile-template (make-instance 'javascript-backend)
@@ -207,3 +207,9 @@
   (with-output-to-string (out)
     (iter (for i in (translate-template backend template))
           (format out "~A~%" (ps:ps* i)))))
+
+(defmethod compile-template ((backend javascript-backend) (templates list))
+  (with-output-to-string (out)
+    (iter (for template in templates)
+          (iter (for i in (translate-template backend template))
+                (format out "~A~%" (ps:ps* i))))))

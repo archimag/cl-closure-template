@@ -264,3 +264,7 @@
 
 (defmethod compile-template ((backend common-lisp-backend) template)
   (eval (translate-template backend template)))
+
+(defmethod compile-template ((backend common-lisp-backend) (templates list))
+  (iter (for template in templates)
+        (compile-template backend template)))

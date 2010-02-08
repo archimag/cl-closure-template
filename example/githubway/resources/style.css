@@ -10,8 +10,34 @@ h1 { border-bottom: 1px solid black; }
 
 .fakelink { color: #0000CC; cursor: pointer; text-decoration: underline; }
 
-.message { margin-left: 0.5em; padding-bottom: 0.5em; border-bottom: 1px solid #cccccc; }
+/*form { margin-top: 1em; margin-left: 0.5em; }*/
 
-form { margin-top: 1em; margin-left: 0.5em; }
+input[type='text'] {
+    padding: 0.3em;
+}
 
-#createmsg { margin: 1em; }
+/*
+form {
+    padding-left: 0.3em;
+}
+*/
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * editable text
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+/*
+.editable-text {
+    padding-left: 0.3em;
+}
+*/
+
+.editable-text em.edit-text {
+    display: none;
+}
+
+.editable-text:hover em.edit-text {
+    display: inline;
+    cursor: pointer;
+}
+

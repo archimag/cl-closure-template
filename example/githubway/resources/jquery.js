@@ -1,1 +1,0 @@
-../../jquery/jquery.js

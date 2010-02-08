@@ -216,6 +216,15 @@ Hello world{/template}")
 		 (template-call "LOCAL"
 				'(:c ((:d 5) (:d 6)))))))
 
+(addtest (common-lisp-backend-test)
+  local-vars-2
+  (ensure-same "56"
+	       (progn
+		 (compile-template :common-lisp-backend
+				   "{template local}{foreach $b in $c}{$b.d.a}{/foreach}{/template}")
+		 (template-call "LOCAL"
+				'(:c ((:d (:a 5)) (:d (:a 6))))))))
+
 ;;;; if
 
 (addtest (common-lisp-backend-test)

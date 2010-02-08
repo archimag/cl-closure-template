@@ -31,6 +31,11 @@
                    (asdf:component-pathname (asdf:find-system '#:closure-template)))
   "Messages directory")
 
+(defparameter *jquery-dir*
+  (merge-pathnames "example/jquery/"
+                   (asdf:component-pathname (asdf:find-system '#:closure-template)))
+  "JQuery directory")
+
 (defparameter *template-path* (merge-pathnames "messages.tmpl" *dir*)
   "Path to file with tempaltes")
 
@@ -92,6 +97,10 @@
 (restas:define-route file ("resources/:file")
   (merge-pathnames (format nil "resources/~A" file)
                    *dir*))
+
+(restas:define-route jquery ("jquery/jquery:(str).js")
+  (merge-pathnames (format nil "jquery~A.js" str)
+                   *jquery-dir*))
 
 (restas:define-route templates.js ("resources/templates.js"
                                    :content-type "text/javascript")

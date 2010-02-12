@@ -419,3 +419,13 @@ Hello world{/template}")
                                    "{template hello}<strong>Hello world</strong>{/template}
 {template test}{call hello /}{/template}")
                  (template-call "TEST"))))
+
+(addtest (common-lisp-backend-test)
+  call-6
+  (ensure-same "Hello Hello Ivan"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template hello-name}Hello {$name}{/template}
+{template test}{call hello-name}{param name}{call hello-name data=\"all\"/}{/param}{/call}{/template}")
+                 (template-call "TEST"
+                                '(:name "Ivan")))))

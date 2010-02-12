@@ -383,8 +383,8 @@
 
 (define-mode call (80 :all)
   (:allowed param )
-  (:special "{call[^}]*/}")
-  (:entry "{call\\s+[^}]+}(?=.*{/call})")
+  (:special "{call\\s+[^}^/]+/}")
+  (:entry "{call\\s+[^}^/]+}(?=.*{/call})")
   (:entry-attribute-parser parse-call-name-and-data)
   (:exit "{/call}")
   (:post-handler call-post-handler))

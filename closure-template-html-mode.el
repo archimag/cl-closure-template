@@ -63,7 +63,7 @@
      (1 closure-template-tag-face)
      (2 font-lock-function-name-face))
     (,(rx "{"
-          (group (or "/template" "/call"))
+          (group (or "/template" "/call" "/param"))
           "}")
      (1 closure-template-tag-face))))
 

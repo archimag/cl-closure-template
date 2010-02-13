@@ -23,6 +23,7 @@
         <link type="text/css" rel="stylesheet" href="resources/style.css" />
 
         <script src="jquery/jquery.js" type="text/javascript"></script>
+        <script src="jquery/jquery-ui.js" type="text/javascript"></script>
         <script src="jquery/jquery.form.js" type="text/javascript"></script>
         <script src="jquery/jquery.json.js" type="text/javascript"></script>
         <script src="resources/templates.js" type="text/javascript"></script>
@@ -32,9 +33,25 @@
      <body>
         <h1>Closure Template example: GithubWay controls</h1>
 
-        {call editable-text data="$name" /}
+        {call panel}
+            {param title: 'Name' /}
+            {param close: true /}
+            {param body}
+                {call editable-text data="$name" /}
+            {/param}
+        {/call}
 
-        {call editable-text data="$email" /}
+        {call panel}
+            {param title: 'Email' /}
+            {param close: true /}
+            {param body}
+               {call editable-text data="$email" /}
+            {/param}
+        {/call}
+
+        /*{call editable-text data="$email" /}*/
+
+        /*{call editable-list data="$colors" /}*/
      </body>
    </html>
 {/template}
@@ -61,4 +78,37 @@
            <span class="fakelink cancel">cancel</span>
        </div>
    </form>
+{/template}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * panel template
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+{template panel}
+<table class="panel">
+    <tbody>
+        <tr>
+            <td class="TL"></td>
+            <td class="TM">
+                <span class="TML">{$title |noAutoescape}</span>
+                {if $close}
+                    <div class="TRx"></div>
+                {/if}
+            </td>
+            <td class="TR"></td>
+        </tr>
+
+        <tr>
+            <td class="ML"></td>
+            <td class="MM">{$body |noAutoescape}</td>
+            <td class="MR"></td>
+        </tr>
+
+        <tr>
+            <td class="BL"></td>
+            <td class="BM"></td>
+            <td class="BR"></td>
+        </tr>
+    </tbody>
+</table>
 {/template}

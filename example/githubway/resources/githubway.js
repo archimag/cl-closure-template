@@ -100,5 +100,7 @@ EditableText.prototype.editForm = example.githubway.view.editText;
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 $(document).ready(function () {
-    $(".editable-text").each( function (i, node) { new EditableText($(node)); })
+   $(".editable-text").each( function (i, node) { new EditableText($(node)); });
+
+   $(".panel").draggable().resizable();
 });

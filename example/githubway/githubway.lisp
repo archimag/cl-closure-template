@@ -54,7 +54,6 @@
 
 (defparameter *email* "Ivan.Petrov@example.com")
 
-
 (defun with-json (&rest args)
   (list* :json (json:encode-json-plist-to-string args)
          args))
@@ -73,6 +72,10 @@
 
 (define-route file ("resources/:file")
   (merge-pathnames (format nil "resources/~A" file)
+                   *dir*))
+
+(define-route image ("resources/images/:file")
+  (merge-pathnames (format nil "resources/images/~A" file)
                    *dir*))
 
 (define-route jquery ("jquery/:file")

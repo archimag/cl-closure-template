@@ -67,6 +67,16 @@
   (ensure-same '(getf (elt (:variable :x) (:variable :z)) :y)
                (parse-expression "$x[$z].y")))
 
+(addtest (expression-parser-test)
+  var-6
+  (ensure-same '(elt (elt (:variable :x) 0) 1)
+               (parse-expression "$x[0][1]")))
+
+(addtest (expression-parser-test)
+  var-7
+  (ensure-same '(elt (elt (elt (:variable :x) 0) 1) (:variable :y))
+               (parse-expression "$x[0][1][$y]")))
+
 ;;;; operators
 
 (addtest (expression-parser-test)

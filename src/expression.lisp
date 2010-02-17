@@ -184,7 +184,7 @@
                              pos
                              infix)))
    ;; []
-   (let ((pos (position '|[| infix :from-end t)))
+   (let ((pos (position '|[| infix :from-end nil)))
      (if pos
          (reduce-matching-op '([ nil match ]) 
                              pos
@@ -248,7 +248,8 @@
     (cond ((and (> pos 0) ;; handle f[a]
                 (= 1 (length inside-parens))
                 (eq (op-name op) '[)
-                (function-call-or-variable-p (elt infix (- pos 1))))
+                (function-call-or-variable-p (elt infix (- pos 1)))
+                )
            (replace-subseq infix (- pos 1) (+ len 1)
                            (list* 'elt (elt infix (- pos 1)) inside-parens)))
           ((not (eq (op-name op) '|(|)) ;; handle  [a,b]

@@ -162,11 +162,10 @@
        (if ,seqvar
            (let ((*loops-vars* (acons ',loop-var (list 0 (1- (length ,seqvar)))
                                       *loops-vars*)))
-             (loop
-                for ,loop-var in ,seqvar                  
-                do ,(translate-item backend
+             (iter (for ,loop-var in-sequence ,seqvar)
+                   ,(translate-item backend
                                     (second args))
-                do (incf (index ,loop-var))))
+                   (incf (index ,loop-var))))
            ,(if (third args)
                 (translate-item backend
                                 (third args)))))))

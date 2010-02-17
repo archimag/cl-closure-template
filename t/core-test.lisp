@@ -276,6 +276,19 @@
                   :insert-word-breaks 5))
                (parse-single-template "{template test}{2 + 2 |noAutoescape |id |escapeHtml |escapeUri |escapeJs  |insertWordBreaks:5}{/template}")))
 
+(addtest (template-parser-test)
+  print-6
+  (ensure-same '(closure-template.parser:template ("test") 
+                 (closure-template.parser:print-tag (+ 2 2)
+                  :no-autoescape t
+                  :id t
+                  :escape-html t
+                  :escape-uri t
+                  :escape-js t
+                  :insert-word-breaks 5))
+               (parse-single-template "{template test}{2 + 2 |noAutoescape |id | escapeHtml | escapeUri| escapeJs  |insertWordBreaks:5}{/template}")))
+
+
 ;;;; literal
 
 (addtest (template-parser-test)

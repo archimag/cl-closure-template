@@ -140,7 +140,7 @@
            nil))))
 
 (defun print-tag-post-handler (obj)
-  (or (ppcre:register-groups-bind (expr directives) ("^{(?:print\\s+)?([^\\|]+)((?:\\s*\\|[\\w:]*)*)\\s*}$" (second obj))
+  (or (ppcre:register-groups-bind (expr directives) ("^{(?:print\\s+)?([^\\|]+)((?:\\s*\\|\\s*[\\w:]*)*)\\s*}$" (second obj))
         (list* (car obj)              
                (parse-expr-or-discard expr)
                (alexandria:alist-plist

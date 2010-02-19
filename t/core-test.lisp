@@ -67,6 +67,16 @@
   (ensure-same '(getf (elt (:variable :x) (:variable :z)) :y)
                (parse-expression "$x[$z].y")))
 
+(addtest (expression-parser-test)
+  var-6
+  (ensure-same '(elt (elt (:variable :x) 0) 1)
+               (parse-expression "$x[0][1]")))
+
+(addtest (expression-parser-test)
+  var-7
+  (ensure-same '(elt (elt (elt (:variable :x) 0) 1) (:variable :y))
+               (parse-expression "$x[0][1][$y]")))
+
 ;;;; operators
 
 (addtest (expression-parser-test)
@@ -265,6 +275,19 @@
                   :escape-js t
                   :insert-word-breaks 5))
                (parse-single-template "{template test}{2 + 2 |noAutoescape |id |escapeHtml |escapeUri |escapeJs  |insertWordBreaks:5}{/template}")))
+
+(addtest (template-parser-test)
+  print-6
+  (ensure-same '(closure-template.parser:template ("test") 
+                 (closure-template.parser:print-tag (+ 2 2)
+                  :no-autoescape t
+                  :id t
+                  :escape-html t
+                  :escape-uri t
+                  :escape-js t
+                  :insert-word-breaks 5))
+               (parse-single-template "{template test}{2 + 2 |noAutoescape |id | escapeHtml | escapeUri| escapeJs  |insertWordBreaks:5}{/template}")))
+
 
 ;;;; literal
 

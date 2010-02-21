@@ -405,8 +405,11 @@
 (defun remove-whitespaces (obj)
   (typecase obj
     (string (ppcre:regex-replace-all "\\s{2,}"  (remove #\Newline obj) " "))
-    (cons (iter (for item in obj)
-                (collect (remove-whitespaces item))))
+    (cons (if (eql (car obj)
+                   'literal)
+              obj
+              (iter (for item in obj)
+                    (collect (remove-whitespaces item)))))
     (otherwise obj)))
 
 (defmethod wiki-parser:parse ((markup (eql :closure-template.parser)) (obj string))

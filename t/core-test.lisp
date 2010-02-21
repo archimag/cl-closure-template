@@ -409,3 +409,27 @@
                    "Hello " (closure-template.parser:print-tag (:variable :y)))))
                (parse-single-template "{template test}{call hello-name data=\"$data\"}{param a: $x /}{param b}Hello {$y}{/param} {/call}{/template}")))
 
+;;;; whitespaces
+
+(addtest (template-parser-test)
+  whitespace-1
+  (ensure-same '(closure-template.parser:template ("test") "Hello World")
+               (parse-single-template "{template test}
+    Hello
+    World
+{/template}")))
+
+(addtest (template-parser-test)
+  whitespace-2
+  (ensure-same '(closure-template.parser:template ("test")
+                 (closure-template.parser:literal "
+ Hello
+   World
+"))
+               (parse-single-template "{template test}
+    {literal}
+ Hello
+   World
+{/literal}
+{/template}")))
+

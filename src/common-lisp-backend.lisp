@@ -101,14 +101,14 @@
 (defun escape-uri-component (str)
   (escape-string str "~!*()'"))
 
-(defun make-template-package (&optional (name "CLOSURE-TEMPLATE.SHARE") &aux (upname (lispify-string name)))
-  (or (find-package upname)
-      (eval `(defpackage ,(if name
-                              upname
-                              "CLOSURE-TEMPLATE.SHARE")
-               (:use #:cl)
-               (:import-from #:closure-template #:*template-output*)))))
-
+(defun make-template-package (&optional (name "closure-template.share"))
+  (let ((lispified-name (if (stringp name)
+                            (lispify-string name)
+                            name)))
+    (or (find-package lispified-name)
+        (eval `(defpackage ,lispified-name
+                 (:use #:cl)
+                 (:import-from #:closure-template #:*template-output*))))))
 
 (defparameter *default-translate-package*
   (make-template-package))

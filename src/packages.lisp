@@ -10,7 +10,8 @@
   (:use #:cl #:iter)
   (:export #:parse-expression
            #:bad-expression-condition
-           #:not-equal))
+           #:not-equal
+	   #:lispify-string))
 
 (defpackage #:closure-template.parser
   (:use #:cl #:iter #:closure-template.parser.expression)
@@ -20,7 +21,7 @@
 (defpackage #:closure-template
   (:use #:cl #:iter)
   (:import-from #:closure-template.parser #:parse-template)
-  (:import-from #:closure-template.parser.expression #:parse-expression #:not-equal)
+  (:import-from #:closure-template.parser.expression #:parse-expression #:not-equal #:lispify-string)
   (:export #:parse-template
            #:parse-expression
            #:translate-template

@@ -39,13 +39,15 @@
     "min" "max"
     "range"))
 
+(defun lispify-string (str)
+  (coerce (iter (for ch in-string str)
+		(when (upper-case-p ch)
+		  (collect #\-))
+		(collect (char-upcase ch)))
+	  'string))
+
 (defun lispify-name (str)
-  (intern (coerce (iter (for ch in-string str)
-                        (when (upper-case-p ch)
-                          (collect #\-))
-                        (collect (char-upcase ch)))
-                  'string)
-          :keyword))
+  (intern (lispify-string str) :keyword))
 
 (defun make-expression-symbol (string)
   "Convert string to symbol, preserving case, except for AND/OR/NOT/FORALL/EXISTS."

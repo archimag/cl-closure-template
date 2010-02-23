@@ -44,7 +44,7 @@
 (defun escape-uri-component (str)
   (escape-string str "~!*()'"))
 
-(defun make-template-package (&optional (name "CLOSURE-TEMPLATE.SHARE") &aux (upname (string-upcase name)))
+(defun make-template-package (&optional (name "CLOSURE-TEMPLATE.SHARE") &aux (upname (lispify-string name)))
   (or (find-package upname)
       (eval `(defpackage ,(if name
                               upname
@@ -112,7 +112,7 @@
                        (make-template-package (car args))
                        *default-translate-package*)))
     (iter (for tmpl in (cdr args))
-          (let ((symbol (intern (string-upcase (car (second tmpl))))))
+          (let ((symbol (intern (lispify-string (car (second tmpl))))))
             (export symbol)
             (proclaim (list 'ftype
                             'function
@@ -132,7 +132,7 @@
          (binds (iter (for var in *template-variables*)
                       (collect (list (find-symbol (symbol-name var) *package*)
                                      `(getf $data$ ,var))))))
-    `(defun ,(intern (string-upcase (caar args))) (,@(unless binds '(&optional)) $data$)
+    `(defun ,(intern (lispify-string (caar args))) (,@(unless binds '(&optional)) $data$)
        (let ((*loops-vars* nil) ,@binds)
          (macrolet ((write-template-string (str)
 		      (let ((g-str (gensym)))
@@ -227,7 +227,7 @@
 
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:call)) args)
-  (let ((fun-name (or (find-symbol (string-upcase (first args)))
+  (let ((fun-name (or (find-symbol (lispify-string (first args)))
                       (error "Unknow template ~A" (first args)))))
     `(let ((data ,(cond
                    ((eql (second args) :all) '$data$)

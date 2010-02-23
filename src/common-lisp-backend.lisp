@@ -7,6 +7,63 @@
 
 (in-package #:closure-template)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Helper
+;; string tree
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun make-string-list ()
+  (list ""))
+
+(defun string-list-append (list obj)
+  (cond
+    ((consp obj) (nconc list
+                        (cdr obj)))
+    (t (nconc list
+              (list obj)))))
+
+(defun string-list-to-string (list)
+  (apply #'concatenate
+           'string
+           (cdr list)))
+
+(defmacro write-template-string (str)
+  (let ((g-str (gensym)))
+    `(let ((,g-str ,str))
+       (string-list-append *template-output*
+                           (cond
+                             ((typep ,g-str 'float) (let ((*read-default-float-format* (type-of ,g-str)))
+                                                      (format nil "~A" ,g-str)))
+                             ((consp ,g-str) ,g-str)
+                             (,g-str (format nil "~A" ,g-str)))))))
+
+(defmacro with-template-output (&body body)
+  `(cond
+     (*template-output* ,@body)
+     (t (let ((*template-output* (make-string-list)))
+          ,@body
+          (string-list-to-string *template-output*)))))
+
+    
+;; (defmacro write-template-string (str)
+;;   (let ((g-str (gensym)))
+;;     `(let ((,g-str ,str))
+;;        (cond
+;;          ((typep ,g-str 'float) (let ((*read-default-float-format* (type-of ,g-str)))
+;;                                   (format *template-output* "~A" ,g-str)))
+;;          (,g-str (format *template-output* "~A" ,g-str))))))
+
+;; (defmacro with-template-output (&body body)
+;;   `(cond
+;;      (*template-output* ,@body)
+;;      (t (with-output-to-string (*template-output*)
+;;           ,@body))))
+       
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; implementataion
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defvar *template-variables* nil)
 
 (defvar *local-variables* nil)
@@ -118,15 +175,14 @@
                             'function
                             symbol))))
     (translate-item backend
-                  (cdr args))))
-                            
+                  (cdr args))))                            
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:template)) args)
   (let* ((*template-variables* nil)         
          (body (let ((*autoescape* (if (find :autoescape (cdar args))
                                        (getf (cdar args) :autoescape)
                                        *autoescape*)))
-                 `(with-output-to-string (*template-output*)
+                 `(with-template-output 
                     ,(translate-item backend
                                      (cdr args)))))
          (binds (iter (for var in *template-variables*)
@@ -134,15 +190,7 @@
                                      `(getf $data$ ,var))))))
     `(defun ,(intern (string-upcase (caar args))) (,@(unless binds '(&optional)) $data$)
        (let ((*loops-vars* nil) ,@binds)
-         (macrolet ((write-template-string (str)
-		      (let ((g-str (gensym)))
-			`(let ((,g-str ,str))
-			   (cond
-			     ((typep ,g-str 'float)
-			      (let ((*read-default-float-format* (type-of ,g-str)))
-				(format *template-output* "~A" ,g-str)))
-			     (,g-str (format *template-output* "~A" ,g-str))))))
-                    (random-int (arg) `(random ,arg))
+         (macrolet ((random-int (arg) `(random ,arg))
                     (has-data () '(not (null $data$)))
                     (index (s) `(second (assoc ',s *loops-vars*)))
                     (is-first (s) `(= 0 (index ,s)))
@@ -200,7 +248,7 @@
   (let* ((case-var (gensym "$G"))
          (clauses (iter (for clause in (cddr args))
                         (collect `((find ,case-var (list ,@(first clause)) :test #'equal) ,(translate-item backend
-                                                                                     (cdr clause)))))))
+                                                                                                           (cdr clause)))))))
            
     `(let ((,case-var ,(translate-expression backend
                                              (first args))))
@@ -238,17 +286,21 @@
                               (if (third param)
                                   (translate-expression backend
                                                         (third param))
-                                  `(with-output-to-string (*template-output*)
-                                     ,(translate-item backend
-                                                      (cdddr param))))
+                                  `(let ((*template-output* nil))
+                                     (with-template-output
+                                       ,(translate-item backend
+                                                        (cdddr param)))))
                               'data))
                (collect (list 'push
                               (intern (string-upcase (second (second param))) :keyword)
                               'data)))
-       ,(backend-print backend
-                       (list fun-name
-                             'data)
-                       (list :escape-mode :no-autoescape)))))
+       (let ((*autoescape* nil))
+         (,fun-name data)))))
+
+       ;; ,(backend-print backend
+       ;;                 (list fun-name
+       ;;                       'data)
+       ;;                 (list :escape-mode :no-autoescape)))))
                       
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

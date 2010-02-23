@@ -7,7 +7,7 @@
 
 (in-package #:closure-template)
 
-(defvar *template-output*)
+(defvar *template-output* nil)
 
 (defvar *autoescape* t)
 
@@ -24,8 +24,6 @@
 (defgeneric translate-template (backend template))
 
 (defgeneric compile-template (backend template))
-
-
 
 (defmethod translate-template (backend template)
   (translate-item backend

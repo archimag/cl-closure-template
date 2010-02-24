@@ -12,39 +12,24 @@
 ;; string tree
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun make-string-list ()
-  (list ""))
-
-(defun string-list-append (list obj)
-  (cond
-    ((consp obj) (nconc list
-                        (cdr obj)))
-    (t (nconc list
-              (list obj)))))
-
-(defun string-list-to-string (list)
-  (apply #'concatenate
-           'string
-           (cdr list)))
+(defmacro with-template-output (&body body)
+  `(cond
+     (*template-output* ,@body)
+     (t (let ((*template-output* (list "")))
+          ,@body
+          (apply #'concatenate
+                 'string
+                 (nreverse *template-output*))))))
 
 (defmacro write-template-string (str)
   (let ((g-str (gensym)))
     `(let ((,g-str ,str))
-       (string-list-append *template-output*
-                           (cond
-                             ((typep ,g-str 'float) (let ((*read-default-float-format* (type-of ,g-str)))
-                                                      (format nil "~A" ,g-str)))
-                             ((consp ,g-str) ,g-str)
-                             (,g-str (format nil "~A" ,g-str)))))))
+       (push (cond
+               ((typep ,g-str 'float) (let ((*read-default-float-format* (type-of ,g-str)))
+                                        (format nil "~A" ,g-str)))
+               (,g-str (format nil "~A" ,g-str)))
+             *template-output*))))
 
-(defmacro with-template-output (&body body)
-  `(cond
-     (*template-output* ,@body)
-     (t (let ((*template-output* (make-string-list)))
-          ,@body
-          (string-list-to-string *template-output*)))))
-
-    
 ;; (defmacro write-template-string (str)
 ;;   (let ((g-str (gensym)))
 ;;     `(let ((,g-str ,str))
@@ -178,18 +163,19 @@
                   (cdr args))))                            
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:template)) args)
-  (let* ((*template-variables* nil)         
+  (let* ((*template-variables* nil)
          (body (let ((*autoescape* (if (find :autoescape (cdar args))
                                        (getf (cdar args) :autoescape)
                                        *autoescape*)))
-                 `(with-template-output 
-                    ,(translate-item backend
-                                     (cdr args)))))
+                 (translate-item backend
+                                 (cdr args))))
          (binds (iter (for var in *template-variables*)
                       (collect (list (find-symbol (symbol-name var) *package*)
                                      `(getf $data$ ,var))))))
     `(defun ,(intern (string-upcase (caar args))) (,@(unless binds '(&optional)) $data$)
-       (let ((*loops-vars* nil) ,@binds)
+       (declare (optimize (debug 0) (speed 3)))
+       (let ((*loops-vars* nil)
+             ,@binds)
          (macrolet ((random-int (arg) `(random ,arg))
                     (has-data () '(not (null $data$)))
                     (index (s) `(second (assoc ',s *loops-vars*)))
@@ -198,7 +184,8 @@
                                    `(let ((,var (assoc ',s *loops-vars*)))
                                       (= (second ,var)
                                          (third ,var))))))
-           ,body)))))
+           (with-template-output 
+             ,body))))))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:foreach)) args)
   (let* ((loop-var (intern (string-upcase (second (first (first args))))))
@@ -297,11 +284,6 @@
        (let ((*autoescape* nil))
          (,fun-name data)))))
 
-       ;; ,(backend-print backend
-       ;;                 (list fun-name
-       ;;                       'data)
-       ;;                 (list :escape-mode :no-autoescape)))))
-                      
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; translate and compile template methods

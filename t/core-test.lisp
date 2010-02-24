@@ -226,14 +226,14 @@
 
 (addtest (template-parser-test)
   substition-1
-  (ensure-same '(closure-template.parser:template ("substitions")
-                 closure-template.parser:space-tag
-                 closure-template.parser:emptry-string
-                 closure-template.parser:carriage-return
-                 closure-template.parser:line-feed
-                 closure-template.parser:tab
-                 closure-template.parser:left-brace
-                 closure-template.parser:right-brace)
+  (ensure-same `(closure-template.parser:template ("substitions")
+                 ,(coerce #(#\Space
+                            #\Return
+                            #\Newline
+                            #\Tab
+                            #\{
+                            #\})
+                          'string))
                (parse-single-template "{template substitions}{sp}{nil}{\\r}{\\n}{\\t}{lb}{rb}{/template}")))
 
 ;;;; print

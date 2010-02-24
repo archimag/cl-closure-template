@@ -89,7 +89,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; substition
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
 
 (define-mode space-tag (20 :all)
   (:single "\\s*{sp}\\s*"))
@@ -402,6 +402,8 @@
 
 (wiki-parser:remake-lexer 'toplevel)
 
+;; remove-whitespaces
+
 (defun remove-whitespaces (obj)
   (typecase obj
     (string (ppcre:regex-replace-all "\\s{2,}"  (remove #\Newline obj) " "))
@@ -412,20 +414,75 @@
                     (collect (remove-whitespaces item)))))
     (otherwise obj)))
 
+;; remove-substition
+
+(defparameter *substitions*
+  '(emptry-string
+    space-tag tab
+    line-feed carriage-return
+    left-brace right-brace))
+
+(defun substition-to-string (symbol)
+  (if (eql symbol 'emptry-string)
+      ""
+      (string (case symbol
+                (space-tag #\Space)
+                (carriage-return #\Return)
+                (line-feed #\Newline)
+                (tab #\Tab)
+                (left-brace #\{)
+                (right-brace #\})))))
+
+(defun remove-substition (obj)
+  (cond
+    ((consp obj) (iter (for item in obj)
+                       (collect (remove-substition item))))
+    ((and (symbolp obj)
+          (find obj *substitions*)) (substition-to-string obj))
+    (t obj)))
+
+     
+(defun concat-neighboring-strings (obj)
+  (if (consp obj)
+      (iter (for x on obj)
+            (for item = (car x))
+            (with tmp-string)
+            (cond
+              ((stringp item) (setf tmp-string
+                                    (concatenate 'string
+                                                 tmp-string
+                                                 item)))
+              (tmp-string (collect tmp-string)
+                          (setf tmp-string nil)
+                          (collect (concat-neighboring-strings item)))
+              (t (collect (concat-neighboring-strings item))))
+            (when (and (null(cdr x))
+                       tmp-string)
+              (collect tmp-string)))
+      obj))
+
+;;; simplify-template
+
+(defun simplify-template (obj)
+  (list* (first obj)
+         (second obj)
+         (concat-neighboring-strings (remove-substition (remove-whitespaces (cddr obj))))))
+  
+
 (defmethod wiki-parser:parse ((markup (eql :closure-template.parser)) (obj string))
-  (remove-whitespaces
-  (let* ((res (call-next-method markup obj))
-         (namespace (iter (for item in res)
-                          (finding (second item)
-                                   such-that (and (consp item)
-                                                  (eql (car item) 'namespace)))))
-         (templates (iter (for item in res)
-                          (if (and (consp item)
-                                   (eql (car item) 'template))
-                              (collect item)))))
-    (list* 'namespace
-           namespace
-           templates))))
+  (simplify-template
+   (let* ((res (call-next-method markup obj))
+          (namespace (iter (for item in res)
+                           (finding (second item)
+                                    such-that (and (consp item)
+                                                   (eql (car item) 'namespace)))))
+          (templates (iter (for item in res)
+                           (if (and (consp item)
+                                    (eql (car item) 'template))
+                               (collect item)))))
+     (list* 'namespace
+            namespace
+            templates))))
            
 (defun parse-template (obj)
   (wiki-parser:parse :closure-template.parser obj))

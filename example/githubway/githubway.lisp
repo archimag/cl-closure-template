@@ -14,10 +14,10 @@
                   ))
   (asdf:operate 'asdf:load-op system))
 
-(restas:defsite #:example.githubway
+(restas:define-module #:example.githubway
   (:use :cl))
 
-(restas:start-site '#:example.githubway :port 8080)
+(restas:start '#:example.githubway :port 8080)
 
 
 (in-package #:example.githubway)

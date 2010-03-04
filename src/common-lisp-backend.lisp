@@ -8,8 +8,7 @@
 (in-package #:closure-template)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Helper
-;; string tree
+;; aux
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro with-template-output (&body body)
@@ -29,21 +28,6 @@
                                         (format nil "~A" ,g-str)))
                (,g-str (format nil "~A" ,g-str)))
              *template-output*))))
-
-;; (defmacro write-template-string (str)
-;;   (let ((g-str (gensym)))
-;;     `(let ((,g-str ,str))
-;;        (cond
-;;          ((typep ,g-str 'float) (let ((*read-default-float-format* (type-of ,g-str)))
-;;                                   (format *template-output* "~A" ,g-str)))
-;;          (,g-str (format *template-output* "~A" ,g-str))))))
-
-;; (defmacro with-template-output (&body body)
-;;   `(cond
-;;      (*template-output* ,@body)
-;;      (t (with-output-to-string (*template-output*)
-;;           ,@body))))
-       
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; implementataion
@@ -160,7 +144,15 @@
                             'function
                             symbol))))
     (translate-item backend
-                  (cdr args))))                            
+                  (cdr args))))
+
+(defun has-data-used-p (body)
+  (cond
+    ((and (consp body)
+          (eql (car body) 'has-data)) t)
+    ((consp body) (iter (for item in (cdr body))
+                        (finding t such-that  (has-data-used-p item))))
+    (t nil)))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:template)) args)
   (let* ((*template-variables* nil)
@@ -173,7 +165,10 @@
                       (collect (list (find-symbol (symbol-name var) *package*)
                                      `(getf $data$ ,var))))))
     `(defun ,(intern (lispify-string (caar args))) (,@(unless binds '(&optional)) $data$)       
-       (declare (optimize (debug 0) (speed 3)))
+       (declare ,@(if (or (not *template-variables*)
+                         (has-data-used-p body))
+                     '((ignore $data$)))
+                (optimize (debug 0) (speed 3)))
        (let ((*loops-vars* nil)
              ,@binds)
          (macrolet ((random-int (arg) `(random ,arg))

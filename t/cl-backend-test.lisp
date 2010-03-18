@@ -66,6 +66,15 @@
                  (template-call "TEST"
                                 '(:arg "<&\"'>")))))
 
+(addtest (common-lisp-backend-test)
+  print-4
+  (ensure-same "~!@#$%25%5E&*()%7B%7D%5B%5D=:/,;?+'%22%5C"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{$arg|escapeUri}{/template}")
+                 (template-call "TEST"
+                                '(:arg "~!@#$%^&*(){}[]=:/,;?+\'\"\\")))))
+
 
 ;;;; comment
 

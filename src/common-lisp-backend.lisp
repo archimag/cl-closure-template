@@ -39,37 +39,6 @@
 
 (defvar *loops-vars* nil)
 
-(defun escape-html (str)
-  (if (stringp str)
-      (with-output-to-string (out)
-        (iter (for ch in-string str)
-              (case ch
-                ((#\<) (write-string "&lt;" out))
-                ((#\>) (write-string "&gt;" out))
-                ((#\") (write-string "&quot;" out))
-                ((#\') (write-string "&#039;" out))
-                ((#\&) (write-string "&amp;" out))
-                (otherwise (write-char ch out)))))
-      str))
-
-(defun escape-string (str not-encode)
-  (if (stringp str)
-      (with-output-to-string (out)
-        (iter (for ch in-string str)
-              (if (or (char<= #\0 ch #\9) (char<= #\a ch #\z) (char<= #\A ch #\Z)
-                      (find ch not-encode :test #'char=))
-                  (write-char ch out)
-                  (iter (for octet in-vector (babel:string-to-octets (string ch) :encoding :utf-8))
-                          (format out "%~2,'0x" octet)))))
-      str))
-  
-
-(defun escape-uri (str)
-  (escape-string str "~!@#$&*()=:/,;?+'"))
-
-(defun escape-uri-component (str)
-  (escape-string str "~!*()'"))
-
 (defun make-template-package (&optional (name "closure-template.share"))
   (let ((lispified-name (if (stringp name)
                             (lispify-string name)
@@ -128,8 +97,8 @@
   (case (or (getf directives :escape-mode)
             (if *autoescape* :escape-html :no-autoescape))
     (:no-autoescape `(write-template-string ,expr))
-    (:escape-id `(write-template-string (escape-uri-component ,expr)))
-    (:escape-uri `(write-template-string (escape-uri ,expr)))
+    (:escape-id `(write-template-string (encode-uri-component ,expr)))
+    (:escape-uri `(write-template-string (encode-uri ,expr)))
     (:escape-html `(write-template-string (escape-html ,expr)))))
 
 

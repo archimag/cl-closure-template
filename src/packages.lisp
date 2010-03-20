@@ -28,4 +28,8 @@
            #:compile-template
            #:*default-translate-package*
            #:*default-js-namespace*
-           #:make-template-package))
+           #:make-template-package
+           #:escape-html
+           #:encode-uri
+           #:encode-uri-component
+           #:decode-uri))

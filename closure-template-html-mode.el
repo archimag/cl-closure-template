@@ -52,6 +52,11 @@
      (1 closure-template-tag-face)
      (2 font-lock-function-name-face))))
 
+(defvar *closure-template-literal-keywords*
+  `((,(rx (or "{literal}" "{/literal}"))
+     (1 closure-template-tag-face)
+     (2 font-lock-function-name-face))))
+
 (defvar *closure-template-template-keywords*
   `((,(rx "{"
           (group (or "template" "call" "param"))
@@ -66,6 +71,7 @@
           (group (or "/template" "/call" "/param"))
           "}")
      (1 closure-template-tag-face))))
+
 
 (defvar *closure-template-variable-keywords*
   `((,(rx "$"
@@ -117,6 +123,7 @@
 (defun closure-template-html-font-lock-keywords-3 ()
   (append *closure-template-comment-keywords*
           *closure-template-namespace-keywords*
+          *closure-template-literal-keywords*
           *closure-template-template-keywords*
           *closure-template-variable-keywords*
           *closure-template-substition-keywords*
@@ -162,10 +169,7 @@
 	comment-start-skip "/\\*[ \n\t]+")
   ;; Setting up syntax table
   (modify-syntax-entry ?* ". 23")
-  (modify-syntax-entry ?/ ". 14")
-
-
-  )
+  (modify-syntax-entry ?/ ". 14"))
 
 
 (provide 'closure-template-html-mode)

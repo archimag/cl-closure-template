@@ -115,12 +115,24 @@
     (translate-item backend
                   (cdr args))))
 
-(defun has-data-used-p (body)
+(defun has-data-used-p (body) 
   (cond
     ((and (consp body)
           (eql (car body) 'has-data)) t)
-    ((consp body) (iter (for item in (cdr body))
-                        (finding t such-that  (has-data-used-p item))))
+    ((consp body)
+     (iter (for item in body)
+           (finding t such-that (has-data-used-p item))))
+    (t nil)))
+
+(defun call-data-used-p (body)
+  (cond
+    ((and (consp body)
+          (eql (car body) 'closure-template.parser:call)
+          (eql (third body) :all))
+     t)
+    ((consp body)
+     (iter (for item in body)
+           (finding t such-that  (call-data-used-p item))))
     (t nil)))
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:template)) args)
@@ -134,8 +146,10 @@
                       (collect (list (find-symbol (symbol-name var) *package*)
                                      `(getf $data$ ,var))))))
     `(defun ,(intern (lispify-string (caar args))) (,@(unless binds '(&optional)) $data$)       
-       (declare ,@(if (or (not *template-variables*)
-                         (has-data-used-p body))
+       (declare ,@(if (and (not *template-variables*)
+                           (not (has-data-used-p body))
+                           (not (call-data-used-p args))
+                          )
                      '((ignore $data$)))
                 (optimize (debug 0) (speed 3)))
        (let ((*loops-vars* nil)

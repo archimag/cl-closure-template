@@ -438,3 +438,26 @@ Hello world{/template}")
 {template test}{call hello-name}{param name}{call hello-name data=\"all\"/}{/param}{/call}{/template}")
                  (template-call "TEST"
                                 '(:name "Ivan")))))
+
+;;;; warnings
+
+(deftestsuite common-lisp-backend-warnings-test (common-lisp-backend-test) ())
+
+(addtest (common-lisp-backend-warnings-test)
+  warning-1
+  (ensure-no-warning
+    (compile-template :common-lisp-backend
+                      "{template hello-world}Hello world{/template}")))
+
+(addtest (common-lisp-backend-warnings-test)
+  warning-2
+  (ensure-no-warning
+    (compile-template :common-lisp-backend
+                      "{template hello-world}{hasData()}{/template}")))
+
+(addtest (common-lisp-backend-warnings-test)
+  warning-3
+  (ensure-no-warning
+    (compile-template :common-lisp-backend
+                      "{template hello-world}Hello world{/template}
+{template test}{call hello-world data=\"all\" /}{/template}")))

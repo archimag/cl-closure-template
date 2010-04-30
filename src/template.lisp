@@ -31,8 +31,7 @@
 ;;;; see http://code.google.com/intl/ru/closure/templates/docs/commands.html
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-mode toplevel (0)
-  (:allowed :baseonly))
+(define-toplevel-mode (:allowed :baseonly))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; comment

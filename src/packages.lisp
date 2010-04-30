@@ -13,9 +13,8 @@
            #:not-equal
 	   #:lispify-string))
 
-(defpackage #:closure-template.parser
+(wiki-parser:define-parser #:closure-template.parser
   (:use #:cl #:iter #:closure-template.parser.expression)
-  (:import-from #:wiki-parser #:define-mode #:remake-lexer)
   (:export #:parse-template))
 
 (defpackage #:closure-template

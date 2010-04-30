@@ -7,11 +7,6 @@
 
 (in-package #:closure-template.parser)
 
-(defparameter *lexer* nil)
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *symbols-category* (make-hash-table)))
-
 ;;;; utils
 
 (defun discard-parse-element ()

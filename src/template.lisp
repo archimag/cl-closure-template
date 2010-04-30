@@ -394,7 +394,7 @@
 ;; parse-template
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(wiki-parser:remake-lexer 'toplevel)
+(init-parser)
 
 ;; remove-whitespaces
 

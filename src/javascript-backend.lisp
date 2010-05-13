@@ -36,7 +36,7 @@
                   (if *autoescape* :escape-html :no-autoescape))
           (:no-autoescape expr)
           (:escape-id `(encode-u-r-i-component ,expr))
-          (:escape-uri `(escape-u-r-i ,expr))
+          (:escape-uri `(encode-u-r-i ,expr))
           (:escape-html `(let ((val ,expr))
                (if (ps:== (ps:typeof val) "string")
                    ((ps:@ ((ps:@ ((ps:@ ((ps:@ ((ps:@ val replace) (ps:regex "/&/g") "&amp;") replace) (ps:regex "/</g") "&lt;") replace) (ps:regex "/>/g") "&gt;") replace) (ps:regex "/\"/g") "&quot;") replace) (ps:regex "/'/g") "&#039;")

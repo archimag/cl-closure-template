@@ -439,6 +439,31 @@ Hello world{/template}")
                  (template-call "TEST"
                                 '(:name "Ivan")))))
 
+(addtest (common-lisp-backend-test)
+  call-7
+  (ensure-same "Hello Masha"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template hello-name}Hello {$name}{/template}
+{template test}{call hello-name data=\"$author\"/}{/template}")
+                 (template-call "TEST"
+                                '(:author (:name "Masha"))))))
+
+(addtest (common-lisp-backend-test)
+  call-8
+  (ensure-same "Hello Andrey from Krasnodar"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template hello-name}Hello {$name} from {$city}{/template}
+{template test}
+   {call hello-name data=\"$author\"}
+       {param name: 'Andrey' /}
+   {/call}
+{/template}")
+                 (template-call "TEST"
+                                '(:author (:name "Masha"
+                                           :city "Krasnodar"))))))
+
 ;;;; warnings
 
 (deftestsuite common-lisp-backend-warnings-test (common-lisp-backend-test) ())

@@ -166,26 +166,25 @@
                            (list fun-name))
                        (list :escape-mode :no-autoescape))
         (let ((call-expr '((defvar _$data$_ (ps:create)))))
-          (if data-param
-              (let ((lvar (gensym "$_")))
-                (push `(ps:for-in (,lvar ,data-param)
-                                  (setf (ps:@ _$data$_ ,lvar)
-                                        (aref ,data-param ,lvar)))
-                      call-expr))
-          
-              (iter (for param in params)
-                    (let ((slotname `(ps:@ _$data$_ ,(make-symbol (symbol-name (second (second param)))))))
-                      (push `(setf ,slotname "")
+          (when data-param
+            (let ((lvar (gensym "$_")))
+              (push `(ps:for-in (,lvar ,data-param)
+                                (setf (aref _$data$_ ,lvar)
+                                      (aref ,data-param ,lvar)))
+                    call-expr)))
+          (iter (for param in params)
+                (let ((slotname `(ps:@ _$data$_ ,(make-symbol (symbol-name (second (second param)))))))
+                  (push `(setf ,slotname "")
+                        call-expr)
+                  (if (third param)
+                      (push `(setf ,slotname
+                                   ,(translate-expression backend
+                                                          (third param)))
                             call-expr)
-                      (if (third param)
-                          (push `(setf ,slotname
-                                       ,(translate-expression backend
-                                                              (third param)))
-                                call-expr)
-                          (let ((*js-print-target* slotname))
-                            (push (translate-item backend
-                                                  (cdddr param))
-                                  call-expr))))))
+                      (let ((*js-print-target* slotname))
+                        (push (translate-item backend
+                                              (cdddr param))
+                              call-expr)))))
           `(progn ,@(reverse call-expr)
                   ,(backend-print backend
                                   (list fun-name '_$data$_)

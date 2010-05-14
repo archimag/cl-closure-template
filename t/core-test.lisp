@@ -198,6 +198,11 @@
                      4))
                (parse-expression "max(2, $x ? min($x, $y ? 3 : 5 + 4, 6) : 4)")))
 
+(addtest (expression-parser-test)
+  operator-precedence-1
+  (ensure-same '(+ 1 (* 2 3))
+               (parse-expression "1 + 2 * 3")))
+
 ;;;; functions
 
 (addtest (expression-parser-test)

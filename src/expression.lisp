@@ -217,8 +217,9 @@
                                (->prefix (subseq infix (1+ pos1) pos2))
                                (->prefix (subseq infix (1+ pos2) right))))))
    ;; binary and unary
-   (let* ((pos (position-if #'(lambda (i) (assoc i *infix-ops*))
-                            infix))
+   (let* ((pos (iter (for op in *infix-ops*)
+                         (for pos = (position (car op) infix))
+                         (finding pos such-that pos)))
           (op (if pos
                   (assoc (elt infix pos) *infix-ops*))))
      (if pos

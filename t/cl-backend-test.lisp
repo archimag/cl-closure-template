@@ -380,6 +380,18 @@ Hello world{/template}")
                  (template-call "TEST"
                                 '(:from 1 :to 10 :by 3)))))
 
+(addtest (common-lisp-backend-test)
+  for-4
+  (ensure-same "5152 6162 7172 "
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}
+    {for $i in range(5, 8)}
+        {nil}{for  $j in range(1, 3)}{$i}{$j}{/for}{sp}
+    {/for}
+{/template}")
+                 (template-call "TEST"))))
+
 ;;;; call
 
 (addtest (common-lisp-backend-test)

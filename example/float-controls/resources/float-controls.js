@@ -1,30 +1,9 @@
-// githubway.lisp
+// float-controls.lisp
 //
 // This file is part of the cl-closure-template library, released under Lisp-LGPL.
 // See file COPYING for details.
 //
 // Author: Moskvitin Andrey <archimag@gmail.com>
-
-/*
-function updateJSONFields (json) {
-    delete json.json;
-
-    var shortJSONData = { };
-
-    for (var i in json) {
-        if (json[i] && typeof json[i] == "object") {
-            updateJSONFields(json[i]);
-        }
-        else {
-            shortJSONData[i] = json[i];
-        }
-    }
-
-    json.json = $.toJSON(shortJSONData);
-
-    return json;
-}
-*/
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * EObject
@@ -91,9 +70,9 @@ EditableText.prototype = new EObject;
 
 EditableText.prototype.constructor = EditableText;
 
-EditableText.prototype.toHTML = example.githubway.view.editableText;
+EditableText.prototype.toHTML = example.floatControls.view.editableText;
 
-EditableText.prototype.editForm = example.githubway.view.editText;
+EditableText.prototype.editForm = example.floatControls.view.editText;
     
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * init

@@ -1,50 +1,53 @@
-;;;; githubway.lisp
+;;;; float-controls.lisp
 ;;;;
 ;;;; This file is part of the cl-closure-template library, released under Lisp-LGPL.
 ;;;; See file COPYING for details.
 ;;;;
 ;;;; Author: Moskvitin Andrey <archimag@gmail.com>
 
-(require 'asdf)
+;; http://code.google.com/p/cl-closure-template/
+(asdf:operate 'asdf:load-op '#:closure-template)
 
-(dolist (system '(#:closure-template ;; http://code.google.com/p/cl-closure-template/
-                  #:parenscript      ;; http://common-lisp.net/project/parenscript/
-                  #:restas           ;; http://www.cliki.net/RESTAS
-                  #:cl-json          ;; http://common-lisp.net/project/cl-json/
-                  ))
-  (asdf:operate 'asdf:load-op system))
+;; http://common-lisp.net/project/parenscript/
+(asdf:operate 'asdf:load-op '#:parenscript)
 
-(restas:define-module #:example.githubway
+;; http://www.cliki.net/RESTAS
+(asdf:operate 'asdf:load-op '#:restas)
+
+;; http://common-lisp.net/project/cl-json/
+(asdf:operate 'asdf:load-op '#:cl-json)
+
+(restas:define-module #:example.float-controls
   (:use :cl))
 
-(restas:start '#:example.githubway :port 8080)
+(restas:start '#:example.float-controls :port 8080)
 
-
-(in-package #:example.githubway)
-
+(in-package #:example.float-controls)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; params
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *dir* 
-  (merge-pathnames "example/githubway/"
+  (merge-pathnames "example/float-controls/"
                    (asdf:component-pathname (asdf:find-system '#:closure-template)))
-  "githubway directory")
+  "float-controls directory")
 
 (defparameter *jquery-dir*
   (merge-pathnames "example/jquery/"
                    (asdf:component-pathname (asdf:find-system '#:closure-template)))
   "JQuery directory")
 
-(defparameter *template-path* (merge-pathnames "githubway.tmpl" *dir*)
+(defparameter *template-path* (merge-pathnames "float-controls.tmpl" *dir*)
   "Path to file with tempaltes")
 
 ;;;; template compilation
-(progn (closure-template:compile-template :common-lisp-backend *template-path*)
-       (defparameter *js-templates*
-         (closure-template:compile-template :javascript-backend *template-path*)
-         "Compile templates to JavaScript"))
+
+(closure-template:compile-template :common-lisp-backend *template-path*)
+
+(defparameter *js-templates*
+  (closure-template:compile-template :javascript-backend *template-path*)
+  "Compile templates to JavaScript")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; model
@@ -86,18 +89,23 @@
                             :content-type "text/javascript")
   *js-templates*)
 
+(define-route main (""
+                    :render-method 'example.float-controls.view:page)
+  (list :name (name-to-json)
+        :email (email-to-json)))
 
-
-(define-route main ("")
-  (example.githubway.view:page (list :name (name-to-json)
-                                     :email (email-to-json))))
-
-(define-route save-name ("api/name" :method :post :content-type "application/json")
+(define-route save-name ("api/name" 
+                         :method :post 
+                         :content-type "application/json"
+                         :render-method #'json:encode-json-plist-to-string)
   (setf *name*
         (hunchentoot:post-parameter "value"))
-  (json:encode-json-plist-to-string (name-to-json)))
+  (name-to-json))
 
-(define-route save-email ("api/email" :method :post :content-type "application/json")
+(define-route save-email ("api/email"
+                          :method :post
+                          :content-type "application/json"
+                          :render-method #'json:encode-json-plist-to-string)
   (setf *email*
         (hunchentoot:post-parameter "value"))
-  (json:encode-json-plist-to-string (email-to-json)))
+  (email-to-json))

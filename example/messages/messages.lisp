@@ -5,20 +5,22 @@
 ;;;;
 ;;;; Author: Moskvitin Andrey <archimag@gmail.com>
 
+;; http://code.google.com/p/cl-closure-template/
+(asdf:operate 'asdf:load-op '#:closure-template)
 
-(require 'asdf)
+;; http://common-lisp.net/project/parenscript/
+(asdf:operate 'asdf:load-op '#:parenscript)
 
-(loop for system in '(#:closure-template ;; http://code.google.com/p/cl-closure-template/
-                      #:parenscript      ;; http://common-lisp.net/project/parenscript/
-                      #:restas           ;; http://www.cliki.net/RESTAS
-                      )
-   do (asdf:operate 'asdf:load-op system))
+;; http://www.cliki.net/RESTAS
+(asdf:operate 'asdf:load-op '#:restas)
 
-(restas:defsite #:example.messages
-  (:use :cl))
+;; http://common-lisp.net/project/cl-json/
+(asdf:operate 'asdf:load-op '#:cl-json)
 
-(restas:start-site '#:example.messages :port 8080)
+(restas:define-module #:example.messages
+    (:use #:cl))
 
+(restas:start '#:example.messages :port 8080)
 
 (in-package #:example.messages)
 
@@ -54,41 +56,19 @@
 
 (defvar *messages* nil)
 
+(defun message-id (msg)
+  (getf msg :id))
+
+(defun message-with-href (msg)
+  (list* :href (restas:genurl 'message-detail :id (message-id msg))
+         msg))
+
 (defun make-message (author title message)
   (car (push (list :id (incf *last-message-id*)
                    :author author
                    :title title
                    :message message)
              *messages*)))
-
-(defun message-id (msg)
-  (getf msg :id))
-
-(defun message-url (msg)
-  (restas:genurl 'message-detail :id (message-id msg)))
-
-(defun escape-string (string)
-  (with-output-to-string (out)
-    (with-input-from-string (in string)
-      (loop for char = (read-char in nil nil)
-         while char
-         do (case char
-              ((#\<) (write-string "&lt;" out))
-              ((#\>) (write-string "&gt;" out))
-              ((#\") (write-string "&quot;" out))
-              ((#\') (write-string "&#039;" out))
-              ((#\&) (write-string "&amp;" out))
-              ((#\Return) )
-              ((#\Newline) (write-string "<br />" out))
-              (otherwise (write-char char out)))))))
-
-(defun message-json (msg)
-  (format nil
-          "{href: ~S,title: ~S,author: ~S,message: ~S}"
-          (message-url msg)
-          (escape-string (getf msg :title))
-          (escape-string (getf msg :author))
-          (escape-string (getf msg :message))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; routes
@@ -106,26 +86,25 @@
                                    :content-type "text/javascript")
   *js-templates*)
 
-(restas:define-route all-messages ("/")
-  (messages:show-all-messages (list :messages
-                                    (loop for msg in *messages*
-                                       collect (list* :href (message-url msg) msg)))))
+(restas:define-route all-messages ("/"
+                                   :render-method 'messages:show-all-messages)
+  (list :messages
+        (loop for msg in *messages*
+           collect (message-with-href msg))))
 
 (restas:define-route create-message ("/"
                                      :method :post
-                                     :content-type "text/javascript")
-  (message-json (car (push (list :id (incf *last-message-id*)
-                                 :author (hunchentoot:post-parameter "author")
-                                 :title (hunchentoot:post-parameter "title")
-                                 :message (hunchentoot:post-parameter "message"))
-                           *messages*))))
+                                     :content-type "text/javascript"
+                                     :render-method #'json:encode-json-plist-to-string)
+  (message-with-href (make-message (hunchentoot:post-parameter "author")
+                                   (hunchentoot:post-parameter "title")
+                                   (hunchentoot:post-parameter "message"))))
 
 
 (restas:define-route message-detail ("messages/:id"
-                                     :content-type "text/javascript")
-  (let ((msg (find (parse-integer id)
-                   *messages*
-                   :key #'message-id)))
-    (if msg
-        (message-json msg)
-        hunchentoot:+http-not-found+)))
+                                     :content-type "text/javascript"
+                                     :render-method #'json:encode-json-plist-to-string )
+  (or (find (parse-integer id)
+            *messages*
+            :key #'message-id)
+      hunchentoot:+http-not-found+))

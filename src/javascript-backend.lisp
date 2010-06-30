@@ -50,6 +50,8 @@
         (case key
           (rem (cons 'ps:% (translate-expression backend
                                                  (cdr expr))))
+          (equal (translate-expression backend
+                                       (cons '= (cdr expr))))
           (:round (translate-expression backend
                                         (cons 'round-closure-template
                                               (cdr expr))))

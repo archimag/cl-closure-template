@@ -52,6 +52,9 @@
                                                  (cdr expr))))
           (equal (translate-expression backend
                                        (cons '= (cdr expr))))
+          (not-equal (list 'ps:!=
+                           (translate-expression backend (second expr))
+                           (translate-expression backend (third expr))))
           (:round (translate-expression backend
                                         (cons 'round-closure-template
                                               (cdr expr))))

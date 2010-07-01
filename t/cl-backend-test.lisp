@@ -196,6 +196,17 @@ Hello world{/template}")
                        (template-call "CALCULATE"
                                       '(:val 5))))))
 
+(addtest (common-lisp-backend-test)
+  calculate-10
+  (ensure-same '("true" "false")
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template calculate}{if $val != 5}true{else}false{/if}{/template}")
+                 (list (template-call "CALCULATE"
+                                      '(:val 6))
+                       (template-call "CALCULATE"
+                                      '(:val 5))))))
+
 ;;;; substitions
 
 (addtest (common-lisp-backend-test)

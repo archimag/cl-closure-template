@@ -86,6 +86,11 @@
                                               (cdr expr))))
           (otherwise (cons (or (find-symbol (symbol-name key)
                                             '#:closure-template)
+                               (let ((s (find (symbol-name key)
+                                              closure-template.parser.expression::*possible-functions*
+                                              :key 'lispify-string
+                                              :test #'string=)))
+                                 (if s (intern (symbol-name key) *package*)))
                                (error "Bad keyword ~A" key))
                            (iter (for item in (cdr expr))
                                  (when item

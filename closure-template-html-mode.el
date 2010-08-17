@@ -111,7 +111,7 @@
   `((,(rx "{"
           (group (or "if" "elseif" "switch" "case"))
           (1+ space)
-          (1+ (not space))
+          (1+ (not (any "}")))
           (0+ space)
           "}")
      (1 closure-template-tag-face))
@@ -164,7 +164,6 @@
     (or (closure-short-com)
         (looking-at *closure-star-at-begining*)
 	    (looking-at *closure-long-com*))))
-
 
 (defun closure-open ()
   (save-excursion
@@ -244,7 +243,6 @@
 
 (defun indent-closure-open ()
   (let ((ind (closure-previous-indent)))
-    (message "%s" ind)
     (case (car ind)
       (opened (indent-line-to (+ (second ind)
                                  sgml-basic-offset)))
@@ -254,7 +252,6 @@
 
 (defun indent-closure-close ()
   (let ((prev (closure-previous-indent)))
-    (message "%s" prev)
     (case (first prev)
       (opened (indent-line-to (second prev)))
       (otherwise (indent-line-to (- (second prev) sgml-basic-offset))))))

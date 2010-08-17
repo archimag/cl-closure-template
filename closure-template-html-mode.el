@@ -141,108 +141,136 @@
     closure-template-html-mode-syntax-table)
   "Syntax table for closure-template-html-mode.")
 
-;;; Indentation
-(setq closure-open "^[ \t]*{[a-z]+")
-(setq closure-close "^[ \t]*{/[a-z]+")
-(setq closure-tag "^[ \t]*{")
-(setq closure-short-com "^[ \t]*//")
-(setq closure-star-at-begining "^[ \t]*\\*")
-(setq closure-long-com "^[ \t]*/\\*")
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Indentation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(setq default-closure-width 2)
-
-(defun indent-to-left (ind)
-  (if (> default-closure-width ind)
-      (indent-line-to 0)
-    (indent-line-to (- ind default-closure-width))))
-
-(defun indent-to-right (ind)
-  (indent-line-to (+ default-closure-width ind)))
+(defvar *closure-open* "^[ \t]*{[a-z]+")
+(defvar *closure-close* "^[ \t]*{/[a-z]+")
+(defvar *closure-short-com* "^[ \t]*//")
+(defvar *closure-star-at-begining* "^[ \t]*\\*")
+(defvar *closure-long-com* "^[ \t]*/\\*")
+(defvar *closure-tag-opened* "^[^\n]*\\({[^\n^{/]+[^\n^{]*[^\n^{/]+}\\)[^\n^{]*$")
+(defvar *closure-tag-closed* "^[^\n]*\\({/[^\n^{]+}\\|{[^\n^{]+/}\\)[^\n^{]*$")
 
 (defun closure-short-com ()
   (save-excursion
     (beginning-of-line)
-    (if (looking-at closure-short-com) t)))
+    (looking-at *closure-short-com*)))
 
 (defun closure-any-com ()
   (save-excursion
     (beginning-of-line)
-    (if (or (closure-short-com)
-	    (looking-at closure-star-at-begining)
-	    (looking-at closure-long-com)
-	    )
-	t)))
+    (or (closure-short-com)
+        (looking-at *closure-star-at-begining*)
+	    (looking-at *closure-long-com*))))
 
-(defun closure-tag ()
-  (save-excursion
-    (beginning-of-line)
-    (if (looking-at closure-tag) t)))
 
 (defun closure-open ()
   (save-excursion
     (beginning-of-line)
-    (if (looking-at closure-open) t)))
+    (looking-at *closure-open*)))
 
 (defun closure-close ()
   (save-excursion
     (beginning-of-line)
-    (if (looking-at closure-close) t)))
+    (looking-at *closure-close*)))
 
-(defun get-to-previouse-non-empty ()
-  (while (and (zerop (forward-line -1))
-	      (or (looking-at "[ \t]*$")
-		  (closure-any-com))))
-  (skip-chars-forward " \t"))
+(defun closure-tag-closed ()
+  (save-excursion
+    (beginning-of-line)
+    (if (looking-at *closure-tag-closed*)
+        (let ((str (match-string 1)))
+          (or (some (lambda (obj)
+                      (string-match (caar obj)
+                                    str))
+                    (list *closure-template-template-keywords*
+                          *closure-template-foreach-keywords*
+                          *closure-template-if-switch-keywords*))
+              (some (lambda (obj)
+                      (string-match (caadr obj)
+                                    str))
+                    (list *closure-template-template-keywords*
+                          *closure-template-foreach-keywords*
+                          *closure-template-if-switch-keywords*)))))))
 
-(defun indent-closure-open ()
-  (let ((ind (save-excursion
-	       (get-to-previouse-non-empty)
-	       (let ((i (current-column)))
-		 (if (= (point-min) (point))
-		     nil
-		   (if (closure-close)
-		       (list 'same i)
-		     (list 'rigth i)))))))
+(defun closure-tag-opened ()
+  (save-excursion
+    (beginning-of-line)
+    (if (looking-at *closure-tag-opened*)
+        (let ((str (match-string 1)))
+          (some (lambda (obj)
+                  (string-match (caar obj)
+                                str))
+                (list *closure-template-template-keywords*
+                      *closure-template-foreach-keywords*
+                      *closure-template-if-switch-keywords*))))))
 
-    (if ind
-	(if (eq (car ind) 'same)
-	    (indent-line-to (cadr ind))
-	 (indent-to-right (cadr ind)))
-      (indent-line-to 0))))
-
-(defun indent-closure-close ()
-  (let ((i (save-excursion
-	     (get-to-previouse-non-empty)
-	     (if (closure-open)
-		 (list 'same (current-column))
-	       (list 'left (current-column))))))
-    (case (car i)
-      ('same (indent-line-to (cadr i)))
-      ('left (indent-to-left (cadr i))))))
+(defun closure-previous-indent ()
+  (save-excursion
+    (while (and (zerop (forward-line -1))
+                (or (looking-at "[ \t]*$")
+                    (closure-any-com))))
+    (back-to-indentation)
+    (list (cond
+           ((closure-tag-closed) 'closed)
+           ((closure-tag-opened) 'opened)
+           (t nil))
+          (current-column))))
 
 (defun indent-sgml-in-closure ()
-  (let ((p (point)))
-    (get-to-previouse-non-empty)
-    (let ((c (current-column)))
-      (cond
-       ((closure-open)
-	(goto-char p)
-       	(indent-to-right c))
-       ((closure-close)
-	(goto-char p)
-       	(indent-to-left c))
-       (t (goto-char p)
-	  (sgml-indent-line))))))
+  (let ((prev (closure-previous-indent)))
+    (case (first prev)
+      (opened (indent-line-to (+ (second prev)
+                                 sgml-basic-offset)))
+      (otherwise
+       (let* ((savep (point))
+              (indent-col (save-excursion
+                                 (back-to-indentation)
+                                 (if (>= (point) savep) (setq savep nil))
+                                 (sgml-calculate-indent))))
+         (cond
+          ((eql (first prev) 'closed)
+           (setf indent-col
+                 (min indent-col (second prev))))
+          ((= indent-col 0)
+           (setf indent-col (second prev))))
+         (if (null indent-col)
+             'noindent
+           (if savep
+               (save-excursion (indent-line-to indent-col))
+             (indent-line-to indent-col))))))))
 
+
+(defun indent-closure-open ()
+  (let ((ind (closure-previous-indent)))
+    (message "%s" ind)
+    (case (car ind)
+      (opened (indent-line-to (+ (second ind)
+                                 sgml-basic-offset)))
+      (closed (indent-line-to (second ind)))
+      ((nil) (indent-sgml-in-closure)))))
+       
+
+(defun indent-closure-close ()
+  (let ((prev (closure-previous-indent)))
+    (message "%s" prev)
+    (case (first prev)
+      (opened (indent-line-to (second prev)))
+      (otherwise (indent-line-to (- (second prev) sgml-basic-offset))))))
+          
 (defun closure-indent-line ()
   (interactive)
   (cond
-   ((closure-open) (indent-closure-open))
    ((closure-close) (indent-closure-close))
+   ((closure-open) (indent-closure-open))
    ((closure-any-com) nil)
    (t (indent-sgml-in-closure))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;###autoload
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (define-derived-mode closure-template-html-mode html-mode  "closure-template-html"
   "Major mode for editing Closure Templates.
 \\{closure-template-html-mode-map}"

@@ -159,7 +159,10 @@
 
 
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:call)) args)
-  (let ((fun-name `(,@*js-namespace* ,(js-string-to-symbol (first args))))
+  (let ((fun-name `(,@*js-namespace* ,(if (consp (first args))
+                                          (translate-expression backend
+                                                                (first args))
+                                          (js-string-to-symbol (first args)))))
         (data-param (cond
                       ((eql (second args) :all) '$data$)
                       ((second args) (translate-expression backend (second args)))))

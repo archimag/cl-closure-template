@@ -1,6 +1,7 @@
 ;;;; javascript.lisp
 
-(asdf:operate 'asdf:test-op ':closure-template)
+(asdf:operate 'asdf:test-op '#:closure-template)
+(asdf:operate 'asdf:test-op '#:closure-template-test)
 (asdf:operate 'asdf:load-op '#:parenscript)
 (asdf:operate 'asdf:load-op '#:hunchentoot)
 

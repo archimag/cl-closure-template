@@ -442,10 +442,16 @@
                (parse-single-template "{template test}{call hello-name data=\"$data\"}{param a: $x /}{param b}Hello {$y}{/param} {/call}{/template}")))
 
 (addtest (template-parser-test)
-  call-4
+  call-5
   (ensure-same '(closure-template.parser:template ("test")
-                 (closure-template.parser:call "hello-name" :all))
-               (parse-single-template "{template test}{call hello-name data=\"all\" /}{/template}")))
+                 (closure-template.parser:call (:variable :name) nil))
+               (parse-single-template "{template test}{call name=\"$name\"  /}{/template}")))
+
+(addtest (template-parser-test)
+  call-6
+  (ensure-same '(closure-template.parser:template ("test")
+                 (closure-template.parser:call (:variable :name) :all))
+               (parse-single-template "{template test}{call name=\"$name\" data=\"all\"  /}{/template}")))
 
 ;;;; whitespaces
 

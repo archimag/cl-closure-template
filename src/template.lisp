@@ -349,13 +349,20 @@
   (:post-handler param-post-handler))
 
 (defun parse-call-name-and-data (str)
-  (or (ppcre:register-groups-bind (name) ("^{call\\s+([\\w-\\.]+)\\s*/?}$" str)
+  (or (ppcre:register-groups-bind (name) ("^{call\\s+name=\"([^}\"]+)\"\\s*/?}$" str)
+        (list (parse-expr-or-discard name)
+              nil))
+      (ppcre:register-groups-bind (name exprs) ("^{call\\s+name=\"([^}\"]+)\"\\s+data=\"([^}]+)\"\\s*/?}$" str)
+        (list (parse-expression name)
+              (parse-expr-or-discard exprs)))
+      (ppcre:register-groups-bind (name) ("^{call\\s+([\\w-\\.]+)\\s*/?}$" str)
         (list name
               nil))
       (ppcre:register-groups-bind (name expr) ("^{call\\s+([\\w-\\.]*)\\s+data=\"([^}]+)\"\\s*/?}$" str)
         (list name
               (parse-expr-or-discard expr)))
       (discard-parse-element)))
+
 
 (defun call-post-handler (item)
   (unless (cdr item)
@@ -435,9 +442,15 @@
           (find obj *substitions*)) (substition-to-string obj))
     (t obj)))
 
+(defun check-expression-p (obj)
+  (and (consp obj)
+       (or (keywordp (car obj))
+           (find (car obj)
+                 '(- not + * / rem > < >= <= equal closure-template.parser.expression:not-equal and or if)))))
      
 (defun concat-neighboring-strings (obj)
-  (if (consp obj)
+  (if (and (consp obj)
+           (not (check-expression-p obj)))
       (iter (for x on obj)
             (for item = (car x))
             (with tmp-string)
@@ -457,7 +470,7 @@
 
 ;;; simplify-template
 
-(defun simplify-template (obj)
+(defun simplify-template (obj) 
   (list* (first obj)
          (second obj)
          (concat-neighboring-strings (remove-substition (remove-whitespaces (cddr obj))))))

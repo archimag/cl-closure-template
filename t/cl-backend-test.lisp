@@ -498,6 +498,15 @@ Hello world{/template}")
                                 '(:author (:name "Masha"
                                            :city "Krasnodar"))))))
 
+(addtest (common-lisp-backend-test)
+  call-9
+  (ensure-same "Hello world"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template helloWorld}Hello world{/template}
+{template test}{call name=\"'hello' + 'World'\" /}{/template}")
+                 (template-call "TEST"))))
+
 ;;;; warnings
 
 (deftestsuite common-lisp-backend-warnings-test (common-lisp-backend-test) ())

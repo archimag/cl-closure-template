@@ -35,7 +35,7 @@
         (case (or (getf directives :escape-mode)
                   (if *autoescape* :escape-html :no-autoescape))
           (:no-autoescape expr)
-          (:escape-id `(encode-u-r-i-component ,expr))
+          (:id `(encode-u-r-i-component ,expr))
           (:escape-uri `(encode-u-r-i ,expr))
           (:escape-html `(let ((val ,expr))
                (if (ps:== (ps:typeof val) "string")

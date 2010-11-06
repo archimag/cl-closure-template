@@ -75,6 +75,15 @@
                  (template-call "TEST"
                                 '(:arg "~!@#$%^&*(){}[]=:/,;?+\'\"\\")))))
 
+(addtest (common-lisp-backend-test)
+  print-5
+  (ensure-same "~!%40%23%24%25%5E%26*()%7B%7D%5B%5D%3D%3A%2F%2C%3B%3F%2B'%22%5C"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{$arg|id}{/template}")
+                 (template-call "TEST"
+                                '(:arg "~!@#$%^&*(){}[]=:/,;?+\'\"\\")))))
+
 
 ;;;; comment
 

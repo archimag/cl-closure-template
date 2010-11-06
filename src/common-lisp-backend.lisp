@@ -102,7 +102,7 @@
   (case (or (getf directives :escape-mode)
             (if *autoescape* :escape-html :no-autoescape))
     (:no-autoescape `(write-template-string ,expr))
-    (:escape-id `(write-template-string (encode-uri-component ,expr)))
+    (:id `(write-template-string (encode-uri-component ,expr)))
     (:escape-uri `(write-template-string (encode-uri ,expr)))
     (:escape-html `(write-template-string (escape-html ,expr)))))
 

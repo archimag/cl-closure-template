@@ -30,17 +30,19 @@
                        'string)))
 
 (defmethod backend-print ((backend javascript-backend) expr &optional directives)
-  (list 'ps:+=
+  (list 'setf
         *js-print-target*
-        (case (or (getf directives :escape-mode)
-                  (if *autoescape* :escape-html :no-autoescape))
-          (:no-autoescape expr)
-          (:id `(encode-u-r-i-component ,expr))
-          (:escape-uri `(encode-u-r-i ,expr))
-          (:escape-html `(let ((val ,expr))
-               (if (ps:== (ps:typeof val) "string")
-                   ((ps:@ ((ps:@ ((ps:@ ((ps:@ ((ps:@ val replace) (ps:regex "/&/g") "&amp;") replace) (ps:regex "/</g") "&lt;") replace) (ps:regex "/>/g") "&gt;") replace) (ps:regex "/\"/g") "&quot;") replace) (ps:regex "/'/g") "&#039;")
-                   val))))))
+        (list 'ps:+
+              *js-print-target*
+              (case (or (getf directives :escape-mode)
+                        (if *autoescape* :escape-html :no-autoescape))
+                (:no-autoescape expr)
+                (:id `(encode-u-r-i-component ,expr))
+                (:escape-uri `(encode-u-r-i ,expr))
+                (:escape-html `(let ((val ,expr))
+                                 (if (ps:== (ps:typeof val) "string")
+                                     ((ps:@ ((ps:@ ((ps:@ ((ps:@ ((ps:@ val replace) (ps:regex "/&/g") "&amp;") replace) (ps:regex "/</g") "&lt;") replace) (ps:regex "/>/g") "&gt;") replace) (ps:regex "/\"/g") "&quot;") replace) (ps:regex "/'/g") "&#039;")
+                                     val)))))))
 
 
 (defmethod translate-expression ((backend javascript-backend) expr)

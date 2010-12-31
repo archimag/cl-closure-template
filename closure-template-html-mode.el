@@ -25,7 +25,7 @@
   (append closure-template-html-font-lock-keywords-1
           sgml-font-lock-keywords-2))
 
-
+(add-to-list 'auto-mode-alist '("\\.soy\\'" . closure-template-html-mode))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; closure-template keywords

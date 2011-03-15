@@ -245,11 +245,11 @@
 
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:call)) args)
-  (let ((fun-name  (if (consp (first args))
+  (let ((fun-name (if (consp (first args))
                        `(symbol-function (intern (lispify-string ,(translate-expression backend (first args)))
                                                  ,*package*))
-                       (or `',(find-symbol (lispify-string (first args)))
-                           (error "Unknow template ~A" (first args))))))
+                       `',(or (find-symbol (lispify-string (first args)))
+                              (error "Unknow template ~A" (first args))))))
     `(let ((data ,(cond
                    ((eql (second args) :all) '$data$)
                    ((second args) (translate-expression backend

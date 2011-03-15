@@ -17,6 +17,9 @@
 (defun lispify-name (str)
   (intern (lispify-string str) :keyword))
 
+(defun not-equal (obj1 obj2)
+  (not (equal obj1 obj2)))
+
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar *closure-template-rules* (make-hash-table)))

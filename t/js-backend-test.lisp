@@ -1,7 +1,7 @@
 ;;;; javascript.lisp
 
-(asdf:operate 'asdf:test-op '#:closure-template)
-(asdf:operate 'asdf:test-op '#:closure-template-test)
+(asdf:operate 'asdf:load-op '#:closure-template)
+(asdf:operate 'asdf:load-op '#:closure-template-test)
 (asdf:operate 'asdf:load-op '#:parenscript)
 (asdf:operate 'asdf:load-op '#:hunchentoot)
 
@@ -84,7 +84,9 @@
 ;;;; start hunchentoot web server for run tests in browser
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun test-site-dispatcher (req)
+(defclass test-site-acceptor (hunchentoot:acceptor) () )
+
+(defmethod hunchentoot:acceptor-dispatch-request ((acceptor test-site-acceptor) req)
   (let ((uri (hunchentoot:request-uri req)))
     (cond
       ((string= uri "/") (hunchentoot:handle-static-file (merge-pathnames "t/js/index.html"
@@ -98,8 +100,7 @@
 
 
 (defun start-test-site (&optional (port 8080))
-  (hunchentoot:start (make-instance 'hunchentoot:acceptor
-                                    :port port
-                                    :request-dispatcher 'test-site-dispatcher)))
+  (hunchentoot:start (make-instance 'test-site-acceptor
+                                    :port port)))
 
 (export 'start-test-site)

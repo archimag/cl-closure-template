@@ -26,42 +26,23 @@
     (concat first rest)))
 
 (defun not-brace (character)
-  (not (or (eql character #\{)
-           (eql character #\}))))
+  (not (member character '(#\{ #\} #\Space #\Tab #\Return #\Newline))))
 
-(define-rule simple-text (+ (and (! "//") (! "/*") (not-brace character)))
+(define-rule simple-text (+ (and (! (and whitespace "//")) (! "/*") (not-brace character)))
   (:lambda (list)
     (ppcre:regex-replace-all "\\s{2,}"
                              (remove #\Newline (concat list))
                              " ")))
 
-(define-rule code-block (+ (or substition
-                               literal
-                               if-tag
-                               switch
-                               foreach
-                               for
-                               call
-
-                               comment
-                               simple-text
-                               
-                               print-tag
-                               ))
-  (:lambda (list)
-    (if (not (cdr list))
-        (car list)
-        list)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; commment
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-rule simple-comment (and (? whitespace) "//" (*  (and (! #\Newline) character)) (? whitespace))
+(define-rule simple-comment (and  "//" (*  (and (! #\Newline) character)) whitespace)
   (:lambda (list)
     (list 'comment (concat list))))
 
-(define-rule multiline-comment (and (? whitespace) "/*" (*  (and (! "*/") character)) "*/"  (? whitespace))
+(define-rule multiline-comment (and (? whitespace) "/*" (*  (and (! "*/") character)) "*/")
   (:lambda (list)
     (list 'comment (concat list))))
 
@@ -70,19 +51,24 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; substition
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar *substitiotn-map* (make-hash-table))
 
 (defmacro define-substitions (name str value)
-  `(define-rule ,name (and (? whitespace) ,str (? whitespace))
-     (:constant ,(if (characterp  value)
-                     (string value)
-                     value))))
+  `(progn
+       (setf (gethash ',name *substitiotn-map*)
+             ,(if (characterp  value)
+                         (string value)
+                         value))
+       (define-rule ,name (and (? whitespace) ,str (? whitespace))
+         (:constant ',name))))
 
 (define-substitions space-tag "{sp}" #\Space)
 (define-substitions emptry-string "{nil}" "")
 (define-substitions carriage-return "{\\r}" #\Return)
 (define-substitions line-feed "{\\n}" #\Newline)
-(define-substitions tag "\\t" #\Tab)
+(define-substitions tag "{\\t}" #\Tab)
 (define-substitions left-brace "{lb}" #\{)
 (define-substitions right-brace "{rb}" #\})
 
@@ -102,24 +88,31 @@
 ;;;; print
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-rule print-directive (and (? whitespace) "|" (or "noAutoescape" "id" "escapeHtml" "escapeUri" "escapeJs") (? whitespace))
-  (:destructure (d w1 name w2)
-    (declare (ignore d w1 w2))
-    (cond
-      ((string= name "noAutoescape") :no-autoescape)
-      ((string= name"id") :id)
-      ((string= name "escapeHtml") :escape-html)
-      ((string= name "escapeUri") :escape-uri)
-      ((string= name "escapeJs") :escape-js))))
+(defmacro define-print-directive (name value)
+  `(define-rule ,name (and (? whitespace) "|" (? whitespace) ,value (? whitespace))
+     (:constant '(,(lispify-name value) t))))
+
+(define-print-directive no-autoescape-d "noAutoescape")
+(define-print-directive id-d "id")
+(define-print-directive escape-html-d "escapeHtml")
+(define-print-directive escape-uri-d "escapeUri")
+(define-print-directive escape-js-d "escapeJs")
+
+(define-rule insert-word-breaks-d (and (? whitespace) "|" (? whitespace) "insertWordBreaks:" decimal-integer (? whitespace))
+  (:destructure (w1 d w2 i value w3)
+    (declare (ignore w1 d w2 i w3))
+    (list :insert-word-breaks value)))
+  
+(define-rule print-directive (or no-autoescape-d id-d escape-html-d escape-uri-d escape-js-d insert-word-breaks-d))
 
 (define-rule print-tag (and (or "{print " "{")  expression (* print-directive) "}")
   (:destructure (start expr directives end)
     (declare (ignore start end))
     (list* 'print-tag
            expr
-           (iter (for d in directives)
-                 (collect d)
-                 (collect t)))))
+           (iter (for (key value) in directives)
+                 (collect key)
+                 (collect value)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; if-tag
@@ -146,20 +139,20 @@
 ;;; switch
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-rule case (and "{case" whitespace expression (* (and #\, expression)) "}" code-block)
-  (:destructure (start w expr rest end code)
-    (declare (ignore start w end))
+(define-rule case (and (? whitespace) "{case" whitespace expression (* (and #\, expression)) "}" code-block)
+  (:destructure (w1 start w2 expr rest end code)
+    (declare (ignore start w1 w2 end))
     (list (cons expr (mapcar #'second rest))
           code)))
 
-(define-rule default (and "{default}" code-block)
-  (:destructure (start code)
-    (declare (ignore start))
+(define-rule default (and (? whitespace) "{default}" code-block)
+  (:destructure (w start code)
+    (declare (ignore w start))
     code))
 
-(define-rule switch (and "{switch" whitespace expression "}" (* case) (? default) "{/switch}")
-  (:destructure (start w expr rb cases default end)
-    (declare (ignore start w rb end))
+(define-rule switch (and "{switch" whitespace expression "}" (* case) (? default) (? whitespace) "{/switch}")
+  (:destructure (start w1 expr rb cases default w2 end)
+    (declare (ignore start w1 rb w2 end))
     (list* 'switch-tag
            expr
            default
@@ -177,11 +170,14 @@
 (define-rule foreach (and "{foreach" (+ whitespace) variable (+ whitespace) "in" expression "}" code-block (? ifempty) "{/foreach}")
   (:destructure (start w1 var w2 in expr rb code ifempty end)
     (declare (ignore start w1 w2 in rb end))
-    (list 'foreach
-          (list var expr)
-          (if ifempty
-              (cons code ifempty)
-              (list code)))))
+    (if ifempty
+        (list 'foreach
+              (list var expr)
+              code
+              ifempty)
+        (list 'foreach
+              (list var expr)
+              code))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; for
@@ -203,9 +199,9 @@
                       code-block "{/for}")
   (:destructure (start w1 var w2 in w3 range w4 rb code end)
     (declare (ignore start w1 w2 in w3 w4 rb end))
-    (list 'for-tag
-          (list var range)
-          code)))
+    (list* 'for-tag
+           (list var range)
+           code)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; call
@@ -224,6 +220,7 @@
     (declare (ignore start w1 w2 rb end))
     (list* 'param
            (list :variable (lispify-name name))
+           nil
            code)))
 
 (define-rule param (and (? whitespace) (or short-param full-param) (? whitespace))
@@ -234,19 +231,43 @@
   (:destructure (w1 d expr q)
     (declare (ignore w1 d q))
     expr))
+
+(define-rule call-template-name (or (and "name=\"" expression "\"") single-name)
+  (:lambda (name)
+    (if (consp name)
+        (second name)
+        name)))
                 
-(define-rule short-call (and "{call" whitespace (or single-name expression) (? call-data) (? whitespace) "/}")
+(define-rule short-call (and "{call" whitespace call-template-name (? call-data) (? whitespace) "/}")
   (:destructure (start w1 name data w2 end)
     (declare (ignore start w1 w2 end))
     (list 'call name data)))
 
-(define-rule full-call (and "{call" whitespace (or single-name expression) (? call-data) (? whitespace) "}"
+(define-rule full-call (and "{call" whitespace call-template-name (? call-data) (? whitespace) "}"
                             (* param) "{/call}")
   (:destructure (start w1 name data w2 rb params end)
     (declare (ignore start w1 w2 rb end))
     (list* 'call name data params)))
 
 (define-rule call (or short-call full-call))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; code-block
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        
+(define-rule code-block (+ (or substition
+                               literal
+                               if-tag
+                               switch
+                               foreach
+                               for
+                               call
+
+                               comment
+                               whitespace
+                               simple-text
+
+                               print-tag)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; namespace
@@ -261,6 +282,58 @@
 ;;; template
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun check-expression-p (obj)
+  (and (consp obj)
+       (or (keywordp (car obj))
+           (find (car obj)
+                 '(- not + * / rem > < >= <= equal closure-template.parser.expression:not-equal and or if)))))
+     
+(defun concat-neighboring-strings (obj)
+  (if (and (consp obj)
+           (not (check-expression-p obj)))
+      (iter (for x on obj)
+            (for item = (car x))
+            (with tmp-string)
+            (cond
+              ((stringp item) (setf tmp-string
+                                    (concatenate 'string
+                                                 tmp-string
+                                                 item)))
+              (tmp-string (collect tmp-string)
+                          (setf tmp-string nil)
+                          (collect (concat-neighboring-strings item)))
+              (t (collect (concat-neighboring-strings item))))
+            (when (and (null(cdr x))
+                       tmp-string)
+              (collect tmp-string)))
+      obj))
+
+
+(defun replace-substition (code)
+  (cond
+    ((symbolp code)
+     (or (gethash code *substitiotn-map*)
+         code))
+    ((consp code)
+     (iter (for item in code)
+           (collect (replace-substition item))))
+    (t code)))
+
+(defun trim-whitespace (code)
+  (let ((result code))
+    (when (equal (car result) " ")
+      (setf result (cdr code)))
+    (when (equal (car (last result)) " ")
+      (setf result
+            (subseq result 0 (1- (length result)))))
+    result))
+
+(defun simplify-code (code)
+  (concat-neighboring-strings
+   (replace-substition
+    (trim-whitespace
+     code))))
+
 (define-rule template (and "{template" whitespace single-name
                            (? (and whitespace "autoescape=\"" boolean "\""))
                            (? (and whitespace "private=\"" boolean "\""))
@@ -274,7 +347,9 @@
                                      (if autoescape (list :autoescape (eql (third autoescape) :t)))
                                      (if private  (list :private (eql (third private) :t)))))))
       (if code
-          (list* 'template traits code)
+          (list* 'template
+                 traits
+                 (simplify-code code))
           (list 'template traits)))))
                 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -284,7 +359,7 @@
 (define-rule toplevel (and (? (and (* (or comment whitespace)) namespace))
                            (* (or comment whitespace template)))
   (:destructure (header items)
-    (list* 'toplevel
+    (list* 'namespace
            (second header)
            (iter (for item in items)
                  (when (and (consp item) (eql (car item) 'template))
@@ -295,7 +370,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun parse-template (obj)
-  (typecase obj
-    (string (closure-template-parse obj 'toplevel))
-    (pathname (closure-template-parse (alexandria:read-file-into-string obj) 'toplevel))
-    (otherwise "bad obj")))
+  (closure-template-parse (format nil
+                                  "~%~A"
+                                  (typecase obj
+                                    (string obj)
+                                    (pathname (alexandria:read-file-into-string obj))))
+                          'toplevel))

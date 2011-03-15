@@ -13,13 +13,14 @@
            #:not-equal
            #:lispify-string
            #:lispify-name
+           #:decimal-integer
            #:variable
            #:expression
            #:define-rule
            #:with-closure-template-rules
            #:closure-template-parse))
 
-(wiki-parser:define-parser #:closure-template.parser
+(defpackage #:closure-template.parser
   (:use #:cl #:iter #:closure-template.parser.expression #:esrap)
   (:export #:parse-template
            #:foreach

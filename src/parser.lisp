@@ -57,8 +57,8 @@
 (define-escape-sequence %form-feed #\f #\Page)
 
 (define-rule hex-char (or "0" "1" "2" "3" "4" "5" "6" "7" "8" "9"
-                      "A" "B" "C" "D" "E" "F"
-                      "a" "b" "c" "d" "e" "f"))
+                          "A" "B" "C" "D" "E" "F"
+                          "a" "b" "c" "d" "e" "f"))
 
 (define-rule %unicode-char-sequence (and #\\ #\u hex-char hex-char hex-char hex-char)
   (:lambda (list)
@@ -114,7 +114,7 @@
 
 ;;; literal
 
-(define-rule expression-literal (or number null boolean  string))
+(define-rule expression-literal (or number null boolean string))
 
 ;;; variable
 
@@ -123,9 +123,8 @@
 (define-rule alphanumeric (alphanumericp character))
 
 (define-rule simple-name (and alpha-char (* (or alphanumeric #\_ )))
-  (:lambda (list)
-    (concat list)))
-
+  (:concat t))
+  
 (define-rule dotref (or (and #\. simple-name)
                     (and "['" simple-name "']"))
   (:lambda (list)
@@ -175,7 +174,6 @@
 (defun replace-subseq (sequence start length new)
   (nconc (subseq sequence 0 start) (list new)
                     (subseq sequence (+ start length))))
-
 
 (defun reduce-ref (expr)
   (let* ((pos (position-if #'(lambda (i) 
@@ -252,8 +250,7 @@
     < > <= >=
     equal  not-equal
     and not
-    or
-    ))
+    or))
 
 
 (defun reduce-infix (infix)
@@ -296,11 +293,9 @@
 
 (defun ->prefix (infix)
   "Convert an infix expression to prefix."
-  (iter
-     (unless (> (length infix) 1)
-       (return (first infix)))
-     (setf infix (reduce-infix infix))))
-   
+  (iter (unless (> (length infix) 1)
+          (return (first infix)))
+        (setf infix (reduce-infix infix))))
 
 (define-rule expression (and (? (or - not)) expression-part (* (and operator expression-part)))
   (:destructure (u expr rest)
@@ -318,12 +313,11 @@
 
 ;;; simple text
 
-(defun not-brace (character)
+(defun simple-text-char-p (character)
   (not (member character '(#\{ #\} #\Space #\Tab #\Return #\Newline))))
 
-(define-rule simple-text (+ (not-brace character))
-  (:lambda (list)
-    (concat list)))
+(define-rule simple-text (+ (simple-text-char-p character))
+  (:concat t))
 
 ;;;; commment
 
@@ -343,12 +337,12 @@
 
 (defmacro define-substitions (name str value)
   `(progn
-       (setf (gethash ',name *substitiotn-map*)
-             ,(if (characterp  value)
-                         (string value)
-                         value))
-       (define-rule ,name (and (? whitespace) ,str (? whitespace))
-         (:constant ',name))))
+     (setf (gethash ',name *substitiotn-map*)
+           ,(if (characterp  value)
+                (string value)
+                value))
+     (define-rule ,name (and (? whitespace) ,str (? whitespace))
+       (:constant ',name))))
 
 (define-substitions space-tag "{sp}" #\Space)
 (define-substitions emptry-string "{nil}" "")
@@ -509,8 +503,7 @@
 (define-rule call-data (or call-data-all call-data-expr))
 
 (define-rule template-name (and alpha-char (*  (or alphanumeric #\_ #\-)))
-  (:destructure (first rest)
-    (concat first rest)))
+  (:concat t))
 
 (define-rule call-template-name (or (and "name=\"" expression "\"") template-name)
   (:lambda (name)

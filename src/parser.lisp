@@ -240,12 +240,6 @@
 (define-operator ?)
 (define-operator |:|)
 
-(define-rule ternary (and expression #\? expression #\: expression)
-  (:destructure (condition q expr1 c expr2)
-    (declare (ignore q c))
-    (list 'if condition expr1 expr2)))
-
-
 (define-rule operator (or - not
                           * / rem
                           +
@@ -659,8 +653,6 @@
 
 (defun parse-template (obj)
   (closure-template-parse 'toplevel
-                          (format nil
-                                  "~%~A"
-                                  (typecase obj
-                                    (string obj)
-                                    (pathname (alexandria:read-file-into-string obj))))))
+                          (typecase obj
+                            (string obj)
+                            (pathname (alexandria:read-file-into-string obj)))))

@@ -15,7 +15,7 @@
   (operate 'load-op 'asdf-system-connections))
 
 (defsystem closure-template
-  :depends-on (#:wiki-parser #:split-sequence #:babel)
+  :depends-on (#:wiki-parser #:split-sequence #:babel #:parse-number #:esrap)
   :components ((:module "src"
                         :components ((:file "packages")
                                      (:file "expression" :depends-on ("packages"))

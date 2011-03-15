@@ -3,30 +3,149 @@
 ;;;; This file is part of the cl-closure-template library, released under Lisp-LGPL.
 ;;;; See file COPYING for details.
 ;;;;
-;;;; This is modified version of the AIMA source code (path/to/aima/logic/algorithms/infix.lisp)
-;;;; 
-;;;; Author: Peter Norvig
 ;;;; Author: Moskvitin Andrey
 
 (in-package #:closure-template.parser.expression)
 
-(defun not-equal (obj1 obj2)
-  (not (equal obj1 obj2)))
+(defun lispify-string (str)
+  (coerce (iter (for ch in-string str)
+		(when (upper-case-p ch)
+		  (collect #\-))
+		(collect (char-upcase ch)))
+	  'string))
 
-(define-condition bad-expression-condition (simple-error) ())
+(defun lispify-name (str)
+  (intern (lispify-string str) :keyword))
 
-(defun bad-expression (format-control &rest format-args)
-  (error 'bad-expression-condition
-         :format-control format-control
-         :format-arguments format-args))
 
-(defun op (exp) "Operator of an expression" (if (listp exp) (first exp) exp))
-(defun args (exp) "Arguments of an expression" (if (listp exp) (rest exp) nil))
-(defun arg1 (exp) "First argument" (first (args exp)))
-(defun arg2 (exp) "Second argument" (second (args exp)))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defvar *closure-template-rules* (make-hash-table)))
+
+(defmacro with-closure-template-rules (&body body)
+  `(let ((esrap::*rules* *closure-template-rules*))
+     ,@body))
+
+(defmacro define-rule (symbol expression &body options)
+  `(with-closure-template-rules
+     (defrule ,symbol ,expression ,@options)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Tokenization: convert a string to a sequence of tokens      
+;;; whitespace
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-rule whitespace (+ (or #\space #\tab #\newline))
+  (:constant #\Space))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; string literal
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro define-escape-sequence (name char &optional (result char))
+  `(define-rule ,name (and #\\ ,char)
+     (:constant ,result)))
+
+(define-escape-sequence %reverse-solidus #\\)
+(define-escape-sequence %apostrophe #\')
+(define-escape-sequence %quotation-mark #\")
+(define-escape-sequence %newline #\n #\Newline)
+(define-escape-sequence %carriage-return #\r #\Return)
+(define-escape-sequence %tab #\t #\Tab)
+(define-escape-sequence %backspace #\b #\Backspace)
+(define-escape-sequence %form-feed #\f #\Page)
+
+(define-rule hex-char (or "0" "1" "2" "3" "4" "5" "6" "7" "8" "9"
+                      "A" "B" "C" "D" "E" "F"
+                      "a" "b" "c" "d" "e" "f"))
+
+(define-rule %unicode-char-sequence (and #\\ #\u hex-char hex-char hex-char hex-char)
+  (:lambda (list)
+    (code-char (parse-integer  (concat (cdr (cdr list))) :radix 16))))
+
+(defun not-quote-p (char)
+  (not (eql #\' char)))
+
+(define-rule string-char (or %reverse-solidus
+                         %apostrophe
+                         %quotation-mark
+                         %newline
+                         %carriage-return
+                         %tab
+                         %backspace
+                         %form-feed
+                         %unicode-char-sequence
+                         (not-quote-p character)))
+
+(define-rule string (and #\' (* string-char) #\')
+  (:destructure (q1 string q2)
+    (declare (ignore q1 q2))
+    (concat string)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; number literal
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-rule decimal-integer (+ (digit-char-p character))
+  (:lambda (list)
+    (parse-integer (concat list))))
+
+(define-rule hexadecimal-integer (and "0x" (+ hex-char))
+  (:destructure (s hexs)
+    (declare (ignore s))
+    (parse-integer (concat hexs) :radix 16)))
+
+(define-rule integer (or hexadecimal-integer decimal-integer))
+
+(define-rule float (and (+ (digit-char-p character))
+                    #\. (* (digit-char-p character))
+                    (? (and (or "e" "E" ) (? (or "-" "+")) (* (digit-char-p character)))))
+  (:lambda (list)
+    (parse-number:parse-number (concat list))))
+
+(define-rule number (or float integer))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; null and boolean
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-rule null "null" (:constant :nil))
+(define-rule all "all" (:constant :all))
+
+(define-rule true "true" (:constant :t))
+(define-rule false "false" (:constant :nil))
+(define-rule boolean (or true false))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; literal
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-rule literal (or number null boolean all string))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; variable
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-rule alphanumeric (alphanumericp character))
+
+(define-rule simple-name (and (alpha-char-p character) (* (or alphanumeric #\_ )))
+  (:lambda (list)
+    (concat list)))
+
+(define-rule dotref (or (and #\. simple-name)
+                    (and "['" simple-name "']"))
+  (:lambda (list)
+    (list :dot (lispify-name (second list)))))
+  
+(define-rule aref (or (and #\[ expression #\])
+                  (and #\. integer))
+  (:lambda (list)
+    (list 'elt (second list))))
+
+(define-rule variable (and "$" simple-name)
+  (:lambda (list)
+    (list :variable (lispify-name (second list)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; funcall
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *possible-functions*
@@ -39,137 +158,119 @@
     "min" "max"
     "range"))
 
-(defun lispify-string (str)
-  (coerce (iter (for ch in-string str)
-		(when (upper-case-p ch)
-		  (collect #\-))
-		(collect (char-upcase ch)))
-	  'string))
-
-(defun lispify-name (str)
-  (intern (lispify-string str) :keyword))
-
-(defun make-expression-symbol (string)
-  "Convert string to symbol, preserving case, except for AND/OR/NOT/FORALL/EXISTS."
-  (cond ((find string '(and or not) :test #'string-equal))
-        ((char= #\$ (char string 0)) (list :variable
-                                           (lispify-name (subseq string 1))))
-        ((char= #\. (char string 0)) (list :dot
-                                           (if (not (find-if-not #'digit-char-p string :start 1))
-                                               (parse-integer string :start 1)
-                                               (lispify-name (subseq string 1)))))
-        ((string= string "null") :nil)
-        ((string= string "true") :t)
-        ((string= string "false") :nil)
-        ((string= string "all") :all)
-        ((find string *possible-functions* :test #'string-equal) (lispify-name string))
-        (t (bad-expression "Bad symbol: ~A" string))))
-
-(defun operator-char-p (x)
-  (find x "<=>&^|*/,%!?:"))
-
-(defun parse-operator (string i)
-  (let ((j (position-if-not #'operator-char-p string :start i)))
-    (values (intern (string-upcase (subseq string i j)))
-            j)))
-
-(defun parse-span (string pred i)
-  (let ((j (position-if-not pred string :start i)))
-    (values (make-expression-symbol (subseq string i j)) j)))
-
-(defun parse-string (string i)
-  (let ((j (position #\' string :start i)))
-    (if j
-        (values (subseq string i j) (1+ j)))))
-
-(defun parse-number (string &key (start 0))
-  (multiple-value-bind (i1 pos1) (parse-integer string :start start :junk-allowed t)
-    (if (and i1
-             (> (length string) pos1)
-             (char= (char string pos1) #\.))
-        (multiple-value-bind (i2 pos2) (parse-integer string :start (1+ pos1) :junk-allowed t)
-          (if i2
-              (values (read-from-string (format nil "~A.~A" i1 i2))
-                      pos2)
-              (values i1 pos1)))
-        (values i1 pos1))))
-
-(defun whitespace-char-p (ch)
-  (find ch #(#\Space #\Tab #\Newline)))
-
-(defun symbol-char-p (x)
-  (or (alphanumericp x)
-      (find x "$_")))
-
-(defun string-delimiter-char-p (x) (char= x #\'))
-
-(defun parse-var (string i)
-  (let ((j (position-if-not #'symbol-char-p string :start (1+ i))))
-    (values (make-expression-symbol (subseq string i j)) j)))
-
-
-(defun parse-infix-token (string start)
-  "Return the first token in string and the position after it, or nil."
-  (let* ((i (position-if-not #'whitespace-char-p string :start start))
-         (ch (if i (char string i))))
-    (cond ((null i) (values nil nil))
-          ((find ch "+-~()[]{},") (values (intern (string ch)) (+ i 1)))
-          ((operator-char-p ch) (parse-operator string i))
-          ((digit-char-p ch) (parse-number string :start i))
-          ((char= #\$ ch) (parse-var string i))
-          ((char= #\. ch) (parse-var string i))
-          ((symbol-char-p ch) (parse-span string #'symbol-char-p i))
-          ((string-delimiter-char-p ch) (parse-string string (1+ i)))
-          (t (bad-expression "unexpected character: ~C" ch)))))
-
-
-(defun string->infix (string &optional (start 0))
-  "Convert a string to a list of tokens."
-  (multiple-value-bind (token i) (parse-infix-token string start)
-    (cond ((null token) nil)
-          ((null i) (list token))
-          (t (cons token (string->infix string i))))))            
+(define-rule funcall (and simple-name (? whitespace) #\( (? (and expression (* (and #\, expression )))) #\))
+  (:destructure (name w b1 args b2)
+    (declare (ignore w b1 b2))
+    (unless (find name *possible-functions* :test #'string-equal)
+      (error "Bad function name: ~A" name))
+    (cons (lispify-name name)
+          (if (second args)
+              (cons (first args)
+                    (mapcar #'second (second args)))
+              (list (first args))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Convert infix to prefix notation
+;;; parenthesis
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defparameter *infix-match-ops*
-  '(
-    (|(| nil match |)|)
-    ([ nil match ])
-    ))
-  
-(defparameter *infix-ops* 
-  '((*) (/) (% rem)
-    (+) (-)
-    (<) (>) (<=) (>=)
-    (== equal) (!= not-equal)
-    (and)
-    (not not unary)
-    (or)
-    (|,|))
-  "A list of lists of operators, highest precedence first.")
+(define-rule parenthesis (and #\( expression  #\))
+  (:destructure (b1 expr b2)
+    (declare (ignore b1 b2))
+    expr))
 
-(defun op-token (op) (first op))
-(defun op-name (op) (or (second op) (first op)))
-(defun op-type (op) (or (third op) 'BINARY))
-(defun op-match (op) (fourth op))
-
-(defun ->prefix (infix)
-  "Convert an infix expression to prefix."
-  (when (stringp infix) (setf infix (string->infix infix)))
-  ;; INFIX is a list of elements; each one is in prefix notation.
-  ;; Keep reducing (most tightly bound first) until there is only one 
-  ;; element left in the list.  Example: In two reductions we go:
-  ;; (a + b * c) => (a + (* b c)) => ((+ a (* b c)))ppp
-  (loop 
-    (when (not (> (length infix) 1)) (RETURN (first infix)))
-    (setf infix (reduce-infix infix))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; expression
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun replace-subseq (sequence start length new)
   (nconc (subseq sequence 0 start) (list new)
                     (subseq sequence (+ start length))))
+
+
+(defun reduce-ref (expr)
+  (let* ((pos (position-if #'(lambda (i) 
+                               (and (consp i)
+                                    (not (third i))
+                                    (member (car i) '(elt :dot))))
+                           expr))
+         (op (if pos (elt expr pos))))
+    (if (and pos
+             (> pos 0))
+        (replace-subseq expr (1- pos) 2
+                        (list (if (eql (car op) :dot)
+                                  'getf
+                                  'elt)
+                              (elt expr (1- pos))
+                              (second op))))))
+
+(define-rule expression-part (and (? whitespace)
+                                  (+ (or literal variable dotref aref funcall parenthesis))
+                                  (? whitespace))
+  (:destructure (w1 expr w2)
+    (declare (ignore w1 w2))
+    (labels ((ref-p (i)
+               (and (consp i)
+                    (not (third i))
+                    (member (car i) '(elt :dot))))
+             (reduce-ref (expr)
+               (let* ((pos (position-if #'ref-p expr))
+                      (op (if pos (elt expr pos))))
+                 (when (and pos (> pos 0))
+                   (replace-subseq expr
+                                   (1- pos)
+                                   2
+                                   (list (if (eql (car op) :dot) 'getf 'elt)
+                                         (elt expr (1- pos))
+                                         (second op)))))))
+      (iter
+        (unless (cdr expr)
+          (return (first expr)))
+        (setf expr (reduce-ref expr))))))
+
+(defmacro define-operator (name &optional (val (string-downcase (symbol-name name))))
+  `(define-rule ,name (and (? whitespace) ,val (? whitespace))
+     (:constant ',name)))
+
+(define-operator -)
+(define-operator not)
+(define-operator *)
+(define-operator /)
+(define-operator rem "%")
+(define-operator +)
+(define-operator <)
+(define-operator >)
+(define-operator <=)
+(define-operator >=)
+(define-operator equal "==")
+(define-operator not-equal "!=")
+(define-operator and "and")
+(define-operator or "or")
+(define-operator ?)
+(define-operator |:|)
+
+(define-rule ternary (and expression #\? expression #\: expression)
+  (:destructure (condition q expr1 c expr2)
+    (declare (ignore q c))
+    (list 'if condition expr1 expr2)))
+
+
+(define-rule operator (or - not
+                          * / rem
+                          +
+                          <= >= < >
+                          equal not-equal
+                          and or
+                          ? |:|))
+
+(defparameter *infix-ops-priority* 
+  '(* / rem
+    + -
+    < > <= >=
+    equal  not-equal
+    and not
+    or
+    ))
+
 
 (defun reduce-infix (infix)
   "Find the highest-precedence operator in INFIX and reduce accordingly."
@@ -179,106 +280,67 @@
        (replace-subseq infix 0 2
                        (list '-
                              (second infix))))
-   ;; ()
-   (let ((pos (position '|(| infix :from-end t)))
-     (if pos
-         (reduce-matching-op '(|(| nil match |)|) 
-                             pos
-                             infix)))
-   ;; []
-   (let ((pos (position '|[| infix :from-end nil)))
-     (if pos
-         (reduce-matching-op '([ nil match ]) 
-                             pos
-                             infix)))
-   ;; .x 
-   (let* ((pos (position-if #'(lambda (i) (and (consp i) (eql (car i) :dot))) infix))
-          (op (if pos (elt infix pos))))
-     (if (and pos
-              (> pos 0))
-         (replace-subseq infix (1- pos) 2
-                         (list (typecase (second op)
-                                 (keyword 'getf)
-                                 (integer 'elt)
-                                 (otherwise (bad-expression "Bad algoright with dot operation: ~A" infix)))
-                               (elt infix (1- pos))
-                               (second op)))))
-   ;; ?: ternary
+   
+   ;;?: ternary
    (let* ((pos1 (position '? infix))
           (pos2 (if pos1 (position '|:| infix :start pos1)))
-          (left (if pos2 (1+ (or (position '|,| infix :from-end t :end pos1)
-                                 -1))))
-          (right (if pos2 (or (position '|,| infix :start pos2)
-                              (length infix)))))
+          (len (length infix)))
      (if pos2
-         (replace-subseq infix left (- right left)
+         (replace-subseq infix 0 len
                          (list 'if
-                               (->prefix (subseq infix left pos1))
+                               (->prefix (subseq infix 0 pos1))
                                (->prefix (subseq infix (1+ pos1) pos2))
-                               (->prefix (subseq infix (1+ pos2) right))))))
+                               (->prefix (subseq infix (1+ pos2)))))))
+   
    ;; binary and unary
-   (let* ((pos (iter (for op in *infix-ops*)
-                         (for pos = (position (car op) infix))
-                         (finding pos such-that pos)))
+   (let* ((pos (iter (for op in *infix-ops-priority*)
+                     (for pos = (position op infix))
+                     (finding pos such-that pos)))
           (op (if pos
-                  (assoc (elt infix pos) *infix-ops*))))
+                  (find (elt infix pos) *infix-ops-priority*))))
      (if pos
-         (case (op-type op)
-           (UNARY (replace-subseq infix pos 2 
-                                  (list (op-name op) 
-                                        (elt infix (+ pos 1)))))
-           (BINARY (replace-subseq infix (- pos 1) 3
-                                   (list (op-name op)
-                                         (elt infix (- pos 1)) 
-                                         (elt infix (+ pos 1))))))))
-   ;; bad expression
-   (bad-expression "Bad syntax for infix expression: ~S" infix)))
+         (cond
+           ((eql op 'not)
+            (replace-subseq infix pos 2 
+                            (list 'not 
+                                  (elt infix (+ pos 1)))))
+           (t
+            (replace-subseq infix (- pos 1) 3
+                            (list op
+                                  (elt infix (- pos 1)) 
+                                  (elt infix (+ pos 1))))))))))
 
-(defun function-symbol-p (x) 
-  (and (symbolp x) (not (member x '(and or not ||)))
-       (alphanumericp (char (string x) 0))))
+(defun ->prefix (infix)
+  "Convert an infix expression to prefix."
+  (iter
+     (unless (> (length infix) 1)
+       (return (first infix)))
+     (setf infix (reduce-infix infix))))
+   
 
-(defun function-call-or-variable-p (x)
-  (and (consp x)
-       (symbolp (car x))))
-
-(defun reduce-matching-op (op pos infix)
-  "Find the matching op (paren or bracket) and reduce."
-  ;; Note we don't worry about nested parens because we search :from-end
-  (let* ((end (position (op-match op) infix :start pos ))
-         (len (+ 1 (- end pos)))
-         (inside-parens (remove-commas (->prefix (subseq infix (+ pos 1) end)))))
-    (cond ((and (> pos 0) ;; handle f[a]
-                (= 1 (length inside-parens))
-                (eq (op-name op) '[)
-                (function-call-or-variable-p (elt infix (- pos 1)))
-                )
-           (replace-subseq infix (- pos 1) (+ len 1)
-                           (list* 'elt (elt infix (- pos 1)) inside-parens)))
-          ((not (eq (op-name op) '|(|)) ;; handle  [a,b]
-           (replace-subseq infix pos len 
-                           (cons 'list inside-parens))) ; {set}
-          ((and (> pos 0) ;; handle f(a,b)
-                (function-symbol-p (elt infix (- pos 1))))
-           (replace-subseq infix (- pos 1) (+ len 1)
-                           (cons (elt infix (- pos 1)) inside-parens)))
-          (t ;; handle (a + b)
-           (assert (= (length inside-parens) 1))
-           (replace-subseq infix pos len (first inside-parens))))))
-                   
-(defun remove-commas (exp)
-  "Convert (|,| a b) to (a b)."
-  (cond ((eq (op exp) '|,|) (nconc (remove-commas (arg1 exp) )
-                                   (remove-commas (arg2 exp))))
-        (t (list exp))))
-
+(define-rule expression (and (? (or - not)) expression-part (* (and operator expression-part)))
+  (:destructure (u expr rest)
+    (let ((infix (cons expr
+                       (iter (for i in rest)
+                             (collect (first i))
+                             (collect (second i))))))
+      (->prefix (if u
+                    (cons u infix)
+                    infix)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; public interface
+;;; parse
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun parse-expression (str)
-  (unless str
-    (bad-expression "NIL is not expression"))
-  (let ((*package* (find-package '#:closure-template.parser.expression)))
-    (->prefix str)))
+(defun closure-template-parse (text symbol)
+  (with-closure-template-rules
+    (let ((end (length text)))
+      (esrap::process-parse-result
+       (let ((esrap::*cache* (esrap::make-cache)))
+         (esrap::eval-expression symbol text 0 end))
+       text
+       end
+       nil))))
+
+(defun parse-expression (text)
+  (closure-template-parse text 'expression))

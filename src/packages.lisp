@@ -7,15 +7,45 @@
 
 
 (defpackage #:closure-template.parser.expression
-  (:use #:cl #:iter)
+  (:use #:cl #:iter #:esrap)
   (:export #:parse-expression
            #:bad-expression-condition
            #:not-equal
-	   #:lispify-string))
+           #:lispify-string
+           #:lispify-name
+           #:variable
+           #:expression
+           #:define-rule
+           #:with-closure-template-rules
+           #:closure-template-parse))
 
 (wiki-parser:define-parser #:closure-template.parser
-  (:use #:cl #:iter #:closure-template.parser.expression)
-  (:export #:parse-template))
+  (:use #:cl #:iter #:closure-template.parser.expression #:esrap)
+  (:export #:parse-template
+           #:foreach
+           #:toplevel
+           #:call
+           #:carriage-return
+           #:else-tag
+           #:line-feed
+           #:literal
+           #:for-tag
+           #:elseif
+           #:switch-tag
+           #:ifempty
+           #:default-tag
+           #:param
+           #:namespace
+           #:if-tag
+           #:case-tag
+           #:left-brace
+           #:right-brace
+           #:template
+           #:print-tag
+           #:emptry-string
+           #:tab
+           #:comment
+           #:space-tag))
 
 (defpackage #:closure-template
   (:use #:cl #:iter)

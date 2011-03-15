@@ -108,15 +108,13 @@
 ;;; null and boolean
 
 (define-rule null "null" (:constant :nil))
-(define-rule all "all" (:constant :all))
-
 (define-rule true "true" (:constant :t))
 (define-rule false "false" (:constant :nil))
 (define-rule boolean (or true false))
 
 ;;; literal
 
-(define-rule expression-literal (or number null boolean all string))
+(define-rule expression-literal (or number null boolean  string))
 
 ;;; variable
 
@@ -500,10 +498,15 @@
   (:lambda (list)
     (second list)))
 
-(define-rule call-data (and whitespace "data=\"" expression "\"")
+(define-rule call-data-all (and whitespace "data=\"all\"")
+  (:constant :all))
+
+(define-rule call-data-expr (and whitespace "data=\"" expression "\"")
   (:destructure (w1 d expr q)
     (declare (ignore w1 d q))
     expr))
+
+(define-rule call-data (or call-data-all call-data-expr))
 
 (define-rule template-name (and alpha-char (*  (or alphanumeric #\_ #\-)))
   (:destructure (first rest)
@@ -640,13 +643,7 @@
 
 (defun closure-template-parse (symbol text)
   (with-closure-template-rules
-    (let ((end (length text)))
-      (esrap::process-parse-result
-       (let ((esrap::*cache* (esrap::make-cache)))
-         (esrap::eval-expression symbol text 0 end))
-       text
-       end
-       nil))))
+    (esrap:parse symbol text)))
 
 (defun parse-expression (text)
   (closure-template-parse 'expression text))

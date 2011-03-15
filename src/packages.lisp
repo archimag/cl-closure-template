@@ -6,52 +6,47 @@
 ;;;; Author: Moskvitin Andrey <archimag@gmail.com>
 
 
-(defpackage #:closure-template.parser.expression
-  (:use #:cl #:iter #:esrap)
-  (:export #:parse-expression
-           #:bad-expression-condition
-           #:not-equal
-           #:lispify-string
-           #:lispify-name
-           #:decimal-integer
-           #:variable
-           #:expression
-           #:define-rule
-           #:with-closure-template-rules
-           #:closure-template-parse))
+;; (defpackage #:closure-template.parser.expression
+;;   (:use #:cl #:iter #:esrap)
+;;   (:export #:parse-expression
+;;            #:bad-expression-condition
+;;            #:not-equal
+;;            #:lispify-string
+;;            #:lispify-name
+;;            #:decimal-integer
+;;            #:variable
+;;            #:expression
+;;            #:define-rule
+;;            #:with-closure-template-rules
+;;            #:closure-template-parse))
 
 (defpackage #:closure-template.parser
-  (:use #:cl #:iter #:closure-template.parser.expression #:esrap)
+  (:use #:cl #:iter #:esrap)
   (:export #:parse-template
+           #:parse-expression
+           #:closure-template-parse
+
+           #:not-equal
+           #:lispify-name
+           #:lispify-string
+
+           #:template-name
+           
            #:foreach
-           #:toplevel
            #:call
-           #:carriage-return
-           #:else-tag
-           #:line-feed
+           #:param
            #:literal
            #:for-tag
-           #:elseif
            #:switch-tag
-           #:ifempty
-           #:default-tag
-           #:param
            #:namespace
            #:if-tag
-           #:case-tag
-           #:left-brace
-           #:right-brace
            #:template
            #:print-tag
-           #:emptry-string
-           #:tab
-           #:comment
-           #:space-tag))
+           #:comment))
 
 (defpackage #:closure-template
   (:use #:cl #:iter)
-  (:import-from #:closure-template.parser #:parse-template)
-  (:import-from #:closure-template.parser.expression #:parse-expression #:not-equal #:lispify-string)
+  (:import-from #:closure-template.parser #:parse-template  #:parse-expression #:not-equal #:lispify-string)
   (:export #:parse-template
            #:parse-expression
            #:translate-template

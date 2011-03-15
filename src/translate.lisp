@@ -29,21 +29,11 @@
   (translate-item backend
                   (parse-template template)))
 
-(defparameter *substitions* '(closure-template.parser:space-tag
-                              closure-template.parser:emptry-string
-                              closure-template.parser:carriage-return
-                              closure-template.parser:line-feed
-                              closure-template.parser:tab
-                              closure-template.parser:left-brace
-                              closure-template.parser:right-brace))
-
 (defmethod translate-item (backend (item cons))
   (cond
-    ((and (symbolp (car item))
-          (not (find (car item)
-                     *substitions*))) (translate-named-item backend
-                                                            (car item)
-                                                            (cdr item)))
+    ((symbolp (car item)) (translate-named-item backend
+                                                (car item)
+                                                (cdr item)))
     ((= (length item) 0))
     ((= (length item) 1) (translate-item backend
                                          (car item)))
@@ -62,17 +52,17 @@
                  item
                  '(:escape-mode :no-autoescape)))
 
-(defmethod translate-item (backend (symbol symbol))
-  (backend-print backend
-                 (case symbol
-                   (closure-template.parser:space-tag (string #\Space))
-                   (closure-template.parser:emptry-string "")
-                   (closure-template.parser:carriage-return (string #\Return))
-                   (closure-template.parser:line-feed (string #\Newline))
-                   (closure-template.parser:tab (string #\Tab))
-                   (closure-template.parser:left-brace "{")
-                   (closure-template.parser:right-brace "}")
-                   (otherwise (call-next-method)))))
+;; (defmethod translate-item (backend (symbol symbol))
+;;   (backend-print backend
+;;                  (case symbol
+;;                    (closure-template.parser:space-tag (string #\Space))
+;;                    (closure-template.parser:emptry-string "")
+;;                    (closure-template.parser:carriage-return (string #\Return))
+;;                    (closure-template.parser:line-feed (string #\Newline))
+;;                    (closure-template.parser:tab (string #\Tab))
+;;                    (closure-template.parser:left-brace "{")
+;;                    (closure-template.parser:right-brace "}")
+;;                    (otherwise (call-next-method)))))
 
 (defmethod translate-named-item (backend (item (eql 'closure-template.parser:print-tag)) args)
   (backend-print backend

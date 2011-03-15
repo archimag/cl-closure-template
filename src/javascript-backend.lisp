@@ -79,11 +79,20 @@
                                    (collect (translate-expression backend item))))))))
       expr))
 
+(defun split-namespace-name (str)
+  (destructuring-bind (first rest)
+      (closure-template.parser:closure-template-parse '(and closure-template.parser:template-name
+                                                        (* (and #\. closure-template.parser:template-name)))
+                                                      str)
+    (cons first
+          (mapcar #'second rest))))
+
+;;(split-sequence:split-sequence #\. (car args))
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:namespace)) args)
   (let* ((*js-namespace* (if (car args)
                           (cons 'ps:@
                                 (mapcar #'js-string-to-symbol
-                                        (split-sequence:split-sequence #\. (car args))))
+                                        (split-namespace-name (car args))))
                           *default-js-namespace*)))
     (concatenate 'list
                  (if *check-js-namespace*

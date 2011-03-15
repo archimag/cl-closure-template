@@ -15,12 +15,11 @@
   (operate 'load-op 'asdf-system-connections))
 
 (defsystem closure-template
-  :depends-on (#:split-sequence #:babel #:parse-number #:esrap #:iterate #:cl-ppcre)
+  :depends-on (#:babel #:parse-number #:esrap #:iterate)
   :components ((:module "src"
                         :components ((:file "packages")
-                                     (:file "expression" :depends-on ("packages"))
-                                     (:file "template" :depends-on ("expression"))
-                                     (:file "translate" :depends-on ("template"))
+                                     (:file "parser" :depends-on ("packages"))
+                                     (:file "translate" :depends-on ("parser"))
                                      (:file "escape" :depends-on ("packages"))
                                      (:file "common-lisp-backend" :depends-on ("translate" "escape"))
                                      (:file "standard-templates" :depends-on ("common-lisp-backend"))))))

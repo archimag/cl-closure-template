@@ -173,7 +173,7 @@
 
 (addtest (expression-parser-test)
   operator-!=
-  (ensure-same '(closure-template.parser.expression:not-equal (:variable :x) (:variable :y))
+  (ensure-same '(closure-template.parser:not-equal (:variable :x) (:variable :y))
                (parse-expression " $x != $y ")))
 
 (addtest (expression-parser-test)

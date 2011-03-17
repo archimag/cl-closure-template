@@ -111,12 +111,6 @@
   (let ((*package* (if (car args)
                        (make-template-package (car args))
                        *default-translate-package*)))
-    (iter (for tmpl in (cdr args))
-          (let ((symbol (intern (lispify-string (car (second tmpl))))))
-            (export symbol)
-            (proclaim (list 'ftype
-                            'function
-                            symbol))))
     (translate-item backend
                   (cdr args))))
 
@@ -270,6 +264,18 @@
        (let ((*autoescape* nil))
          (funcall ,fun-name data)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; proclaim funcitons
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun proclaim-template-functions (expr)
+  (let ((*package* (if (second expr)
+                       (make-template-package (second expr))
+                       *default-translate-package*)))
+    (iter (for tmpl in (cddr expr))
+          (let ((symbol (intern (lispify-string (car (second tmpl))))))
+            (export symbol)
+            (proclaim (list 'ftype 'function symbol))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; translate and compile template methods
@@ -277,15 +283,19 @@
 
 (defmethod translate-template ((backend (eql :common-lisp-backend)) template)
   (translate-template (make-instance 'common-lisp-backend)
-                    template))
+                      template))
 
 (defmethod compile-template ((backend (eql :common-lisp-backend)) template)
   (compile-template (make-instance 'common-lisp-backend)
                     template))
 
 (defmethod compile-template ((backend common-lisp-backend) template)
-  (eval (translate-template backend template)))
+  (let ((expr (parse-template template)))
+    (proclaim-template-functions expr)
+    (eval (translate-item backend expr))))
 
 (defmethod compile-template ((backend common-lisp-backend) (templates list))
-  (iter (for template in templates)
-        (compile-template backend template)))
+  (let ((parsed-templates (mapcar 'parse-template templates)))
+    (map nil 'proclaim-template-functions parsed-templates)
+    (iter (for template in parsed-templates)
+          (eval (translate-item backend template)))))

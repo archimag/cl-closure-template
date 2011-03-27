@@ -389,6 +389,18 @@
                  (collect key)
                  (collect value)))))
 
+;;; witch
+
+(define-rule with-variable (and whitespace  simple-name "=\"" expression #\")
+  (:destructure (w var e expr q)
+    (declare (ignore w e q))
+    `((:variable ,(lispify-name var)) ,expr)))
+
+(define-rule with (and "{with" (+ with-variable) (? whitespace) "}" (? code-block) "{/with}")
+  (:destructure (start vars w rb code end)
+    (declare (ignore start w rb end))
+    (list 'with vars code)))
+
 ;;; if-tag
 
 (define-rule else (and "{else}" code-block)
@@ -534,6 +546,7 @@
            foreach
            for
            call
+           with
 
            comment
            whitespace

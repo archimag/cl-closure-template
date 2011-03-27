@@ -39,6 +39,7 @@
            #:for-tag
            #:switch-tag
            #:namespace
+           #:with
            #:if-tag
            #:template
            #:print-tag

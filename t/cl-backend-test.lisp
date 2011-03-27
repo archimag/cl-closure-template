@@ -265,6 +265,16 @@ Hello world{/template}")
 		 (template-call "LOCAL"
 				'(:c ((:d (:a 5)) (:d (:a 6))))))))
 
+;;;; with
+
+(addtest (common-lisp-backend-test)
+  with-1
+  (ensure-same "Hello Andrey"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{with greetingWord=\"'Hello'\" name=\"'Andrey'\"}{$greetingWord} {$name}{/with}{/template}")
+                 (template-call "TEST"))))
+
 ;;;; if
 
 (addtest (common-lisp-backend-test)

@@ -187,6 +187,12 @@
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:literal)) args)
   `(write-template-string ,(car args)))
 
+(defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:with)) args)
+  `(let ,(iter (for (var expr) in (first args))
+               (collect (list (translate-expression backend var)
+                              (translate-expression backend expr))))
+     ,(translate-item backend (second args))))
+
 
 (defmethod translate-named-item ((backend common-lisp-backend) (item (eql 'closure-template.parser:if-tag)) args)
   (cond

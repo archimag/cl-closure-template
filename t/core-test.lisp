@@ -329,6 +329,29 @@
                  (closure-template.parser:literal "Test {$x} {foreach $foo in $bar}{$foo}{/foreach}"))
                (parse-single-template "{template literal-test}{literal}Test {$x} {foreach $foo in $bar}{$foo}{/foreach}{/literal}{/template}")))
 
+;;;; with
+
+(addtest (template-parser-test)
+  with-1
+  (ensure-same '(closure-template.parser:template ("with-test")
+                 (closure-template.parser:with
+                  (((:variable :str) "Hello"))
+                  ((closure-template.parser:print-tag (:variable :str))
+                   " world")))
+               (parse-single-template "{template with-test}{with str=\"'Hello'\"}{$str} world{/with}{/template}")))
+
+(addtest (template-parser-test)
+  with-2
+  (ensure-same '(closure-template.parser:template ("with-test")
+                 (closure-template.parser:with
+                  (((:variable :r) (+ (:variable :a) (:variable :b)))
+                   ((:variable :msg) "Result"))
+                  ((closure-template.parser:print-tag (:variable :msg))
+                   "="
+                   (closure-template.parser:print-tag (:variable :r)))))
+               (parse-single-template "{template with-test}{with r=\"$a + $b\" msg=\"'Result'\"}{$msg}={$r}{/with}{/template}")))
+
+
 ;;;; if
 
 (addtest (template-parser-test)

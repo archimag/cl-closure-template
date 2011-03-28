@@ -136,6 +136,14 @@
              ,body)
            $template-output$))))
 
+(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:with)) args)
+  (let ((*local-variables* *local-variables*))
+    `(let ,(iter (for (var expr) in (first args))
+                 (push (second var) *local-variables*)
+                 (collect (list (translate-expression backend var)
+                                (translate-expression backend expr))))
+       ,(translate-item backend (second args)))))
+
   
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:foreach)) args)
   (let* ((loop-var (make-symbol (string-upcase (second (first (first args))))))

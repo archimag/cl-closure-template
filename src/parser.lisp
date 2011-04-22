@@ -62,7 +62,7 @@
 
 (define-rule %unicode-char-sequence (and #\\ #\u hex-char hex-char hex-char hex-char)
   (:lambda (list)
-    (code-char (parse-integer  (concat (cdr (cdr list))) :radix 16))))
+    (code-char (parse-integer  (text (cdr (cdr list))) :radix 16))))
 
 (defun not-quote-p (char)
   (not (eql #\' char)))
@@ -82,18 +82,18 @@
 (define-rule string (and #\' (* string-char) #\')
   (:destructure (q1 string q2)
     (declare (ignore q1 q2))
-    (concat string)))
+    (text string)))
 
 ;;; number literal
 
 (define-rule decimal-integer (+ (digit-char-p character))
   (:lambda (list)
-    (parse-integer (concat list))))
+    (parse-integer (text list))))
 
 (define-rule hexadecimal-integer (and "0x" (+ hex-char))
   (:destructure (s hexs)
     (declare (ignore s))
-    (parse-integer (concat hexs) :radix 16)))
+    (parse-integer (text hexs) :radix 16)))
 
 (define-rule integer (or hexadecimal-integer decimal-integer))
 
@@ -101,7 +101,7 @@
                     #\. (* (digit-char-p character))
                     (? (and (or "e" "E" ) (? (or "-" "+")) (* (digit-char-p character)))))
   (:lambda (list)
-    (parse-number:parse-number (concat list))))
+    (parse-number:parse-number (text list))))
 
 (define-rule number (or float integer))
 
@@ -123,7 +123,7 @@
 (define-rule alphanumeric (alphanumericp character))
 
 (define-rule simple-name (and alpha-char (* (or alphanumeric #\_ )))
-  (:concat t))
+  (:text t))
   
 (define-rule dotref (or (and #\. simple-name)
                     (and "['" simple-name "']"))
@@ -317,17 +317,17 @@
   (not (member character '(#\{ #\} #\Space #\Tab #\Return #\Newline))))
 
 (define-rule simple-text (+ (simple-text-char-p character))
-  (:concat t))
+  (:text t))
 
 ;;;; commment
 
 (define-rule simple-comment (and  "//" (*  (and (! #\Newline) character)) whitespace)
   (:lambda (list)
-    (list 'comment (concat list))))
+    (list 'comment (text list))))
 
 (define-rule multiline-comment (and (? whitespace) "/*" (*  (and (! "*/") character)) "*/")
   (:lambda (list)
-    (list 'comment (concat list))))
+    (list 'comment (text list))))
 
 (define-rule comment (or simple-comment multiline-comment))
 
@@ -359,7 +359,7 @@
 (define-rule literal (and "{literal}" (*  (and (! "{/literal}") character)) "{/literal}")
   (:destructure (start any end)
     (declare (ignore start end))
-    (list ' literal (concat any))))
+    (list ' literal (text any))))
 
 ;;;; print
 
@@ -515,7 +515,7 @@
 (define-rule call-data (or call-data-all call-data-expr))
 
 (define-rule template-name (and alpha-char (*  (or alphanumeric #\_ #\-)))
-  (:concat t))
+  (:text t))
 
 (define-rule call-template-name (or (and "name=\"" expression "\"") template-name)
   (:lambda (name)
@@ -559,7 +559,7 @@
 (define-rule namespace (and "{namespace" whitespace (and template-name (* (and #\. template-name))) (? whitespace) #\})
   (:destructure (start w1 name w2 end)
     (declare (ignore start w1 w2 end))
-    (concat name)))
+    (text name)))
 
 ;;; template
 
@@ -569,7 +569,7 @@
            (find (car obj)
                  '(- not + * / rem > < >= <= equal not-equal and or if)))))
      
-(defun concat-neighboring-strings (obj)
+(defun text-neighboring-strings (obj)
   (if (and (consp obj)
            (not (check-expression-p obj)))
       (iter (for x on obj)
@@ -582,8 +582,8 @@
                                                  item)))
               (tmp-string (collect tmp-string)
                           (setf tmp-string nil)
-                          (collect (concat-neighboring-strings item)))
-              (t (collect (concat-neighboring-strings item))))
+                          (collect (text-neighboring-strings item)))
+              (t (collect (text-neighboring-strings item))))
             (when (and (null(cdr x))
                        tmp-string)
               (collect tmp-string)))
@@ -609,7 +609,7 @@
     result))
 
 (defun simplify-code (code)
-  (concat-neighboring-strings
+  (text-neighboring-strings
    (replace-substition
     (trim-whitespace
      code))))

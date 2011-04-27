@@ -144,7 +144,12 @@
                                 (translate-expression backend expr))))
        ,(translate-item backend (second args)))))
 
-  
+(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:literal)) args)
+  (list 'setf *js-print-target*
+        (list 'ps:+
+              *js-print-target*
+              (car args))))
+        
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:foreach)) args)
   (let* ((loop-var (make-symbol (string-upcase (second (first (first args))))))
          (*local-variables* (cons loop-var

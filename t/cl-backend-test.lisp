@@ -265,6 +265,16 @@ Hello world{/template}")
 		 (template-call "LOCAL"
 				'(:c ((:d (:a 5)) (:d (:a 6))))))))
 
+;;;; literal
+
+(addtest (common-lisp-backend-test)
+  literal-1
+  (ensure-same "&{$x}{}"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{literal}&{$x}{}{/literal}{/template}")
+                 (template-call "TEST"))))
+
 ;;;; with
 
 (addtest (common-lisp-backend-test)

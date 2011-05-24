@@ -25,26 +25,16 @@
                                      (:file "standard-templates" :depends-on ("common-lisp-backend"))))))
 
 (defmethod perform ((o test-op) (c (eql (find-system 'closure-template))))
-  (operate 'load-op 'closure-template-test)
-  (operate 'test-op 'closure-template-test :force t))
+  (operate 'load-op 'closure-template)
+  (operate 'test-op 'closure-template-test))
 
 
 (defsystem closure-template-test
   :depends-on (#:closure-template #:lift)
   :components ((:module "t"
-                        :components ((:file "core-test")
-                                     (:file "cl-backend-test" :depends-on ("core-test"))))))
-
-
-(defmethod perform ((o test-op) (c (eql (find-system 'closure-template-test))))
-  (operate 'load-op 'closure-template-test )
-  (let* ((test-results (funcall (intern (symbol-name 'run-closure-template-tests) '#:closure-template.test)))
-         (errors (funcall (intern (symbol-name 'errors) :lift) test-results))
-         (failures (funcall (intern (symbol-name 'failures) :lift) test-results)))
-    (if (or errors failures)
-        (error "test-op failed: ~A"
-               (concatenate 'list errors failures))
-        (print test-results))))
+                        :components ((:file "suite")
+                                     (:file "parser" :depends-on ("suite"))
+                                     (:file "common-lisp-backend" :depends-on ("suite"))))))
 
 #+asdf-system-connections
 (defsystem-connection closure-template-javascript-backend

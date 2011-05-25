@@ -5,21 +5,6 @@
 ;;;;
 ;;;; Author: Moskvitin Andrey <archimag@gmail.com>
 
-
-;; (defpackage #:closure-template.parser.expression
-;;   (:use #:cl #:iter #:esrap)
-;;   (:export #:parse-expression
-;;            #:bad-expression-condition
-;;            #:not-equal
-;;            #:lispify-string
-;;            #:lispify-name
-;;            #:decimal-integer
-;;            #:variable
-;;            #:expression
-;;            #:define-rule
-;;            #:with-closure-template-rules
-;;            #:closure-template-parse))
-
 (defpackage #:closure-template.parser
   (:use #:cl #:iter #:esrap)
   (:export #:parse-template

@@ -236,13 +236,14 @@
 (define-operator ?)
 (define-operator |:|)
 
-(define-rule operator (or - not
-                          * / rem
-                          +
-                          <= >= < >
-                          equal not-equal
-                          and or
-                          ? |:|))
+(define-rule operator
+  (or - not
+      * / rem
+      +
+      <= >= < >
+      equal not-equal
+      and or
+      ? |:|))
 
 (defparameter *infix-ops-priority* 
   '(* / rem

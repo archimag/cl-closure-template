@@ -40,7 +40,7 @@
                 (:id `(encode-u-r-i-component ,expr))
                 (:escape-uri `(encode-u-r-i ,expr))
                 (:escape-html `(let ((val ,expr))
-                                 (if (equal (ps:typeof val) "string")
+                                 (if (= (ps:typeof val) "string")
                                      ((ps:@ ((ps:@ ((ps:@ ((ps:@ ((ps:@ val replace) (ps:regex "/&/g") "&amp;") replace) (ps:regex "/</g") "&lt;") replace) (ps:regex "/>/g") "&gt;") replace) (ps:regex "/\"/g") "&quot;") replace) (ps:regex "/'/g") "&#039;")
                                      val)))))))
 
@@ -99,9 +99,9 @@
                      (nreverse (iter (for i from (length *js-namespace*) downto 2 )
                                      (collect (let ((part (subseq *js-namespace* 0 i)))
                                                 (if (cddr part)
-                                                    `(when (equal (ps:typeof ,part) "undefined")
+                                                    `(when (= (ps:typeof ,part) "undefined")
                                                        (setf ,part (ps:create)))
-                                                    `(when (equal (ps:typeof ,part) "undefined")
+                                                    `(when (= (ps:typeof ,part) "undefined")
                                                        (defvar ,part (ps:create)))))))))
                  (iter (for fun in (cdr args))
                        (collect (translate-item backend

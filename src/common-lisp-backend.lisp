@@ -22,18 +22,6 @@
 (defun != (arg1 arg2)
   (not (equal arg1 arg2)))
 
-(defun has-data ()
-  t)
-
-(defun is-first (symbol)
-  symbol)
-
-(defun is-last (symbol)
-  symbol)
-
-(defun index (symbol)
-  symbol)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; expression handler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -42,40 +30,65 @@
   (alexandria:named-lambda variable-handler (env)
     (getf env varkey)))
 
-(defun make-foreach-function-handler (symbol varname)
-  (constantly 1))
+(defun make-if-function-handler (condition success fail)
+  (let ((condition-expr (make-expression-handler condition))
+        (success-expr (make-expression-handler success))
+        (fail-expr (make-expression-handler fail)))
+    (alexandria:named-lambda if-function-handler (env)
+        (if (funcall condition-expr env)
+            (funcall success-expr env)
+            (funcall fail-expr env)))))
+
+(defun make-simple-function-hadler (function args)
+  (alexandria:named-lambda function-handler (env)
+    (apply function
+           (iter (for arg in args)
+                 (collect (funcall arg env))))))
 
 (defun make-function-handler (symbol args)
-  (let ((function (symbol-function
-                   (case symbol
-                     ('+ '+/closure-template)
-                     (:round 'round/closure-template)
-                     (:not-equal '!=)
-                     (otherwise
-                      (or (and (find (symbol-name symbol)
-                                     closure-template.parser::*possible-functions*
-                                     :key 'lispify-string
-                                     :test #'string=)
-                               (find-symbol (symbol-name symbol)
-                                            '#:closure-template))
-                          (find symbol  closure-template.parser::*infix-ops-priority*)
-                          (error "Bad function ~A" symbol)))))))
-    (alexandria:named-lambda function-handler (env)
-      (apply function
-             (iter (for arg in args)
-                   (collect (funcall arg env)))))))
+  (case symbol
+    ((getf elt)
+     (make-simple-function-hadler (symbol-function symbol) args))
+    (+
+     (make-simple-function-hadler #'+/closure-template args))
+    
+    (:round
+     (make-simple-function-hadler #'round/closure-template args))
+    
+    (:not-equal
+     (make-simple-function-hadler (alexandria:named-lambda not-equal (x y)
+                                    (not (equal x y)))
+                                  args))
 
+    (:random-int
+     (make-simple-function-hadler #'random args))
+
+    (otherwise
+     (make-simple-function-hadler (or (and (find (symbol-name symbol)
+                                                 closure-template.parser::*possible-functions*
+                                                 :key 'lispify-string
+                                                 :test #'string=)
+                                           (find-symbol (symbol-name symbol)
+                                                        '#:closure-template))
+                                      (find symbol  closure-template.parser::*infix-ops-priority*)
+                                      (error "Bad function ~A" symbol))
+                                  args))))
+    
 (defun make-expression-handler (expr)
   (cond
     ((and (consp expr) (symbolp (car expr)))
      (case (car expr)
        (:variable
         (make-variable-handler (second expr)))
-       ((:is-first :is-last :index)
-        (make-foreach-function-handler (car expr) (second expr)))
+       ((:is-first :is-last :index)        
+        (make-foreach-function-handler (car expr) (second (second expr))))
+       (if
+        (make-if-function-handler (first (cdr expr))
+                                  (second (cdr expr))
+                                  (third (cdr expr))))
        (otherwise
         (make-function-handler (car expr)
-                                  (mapcar #'make-expression-handler (cdr expr))))))
+                               (mapcar #'make-expression-handler (cdr expr))))))
     ((atom expr)
      (constantly expr))
     (t (error "Bad expression ~A" expr))))
@@ -92,7 +105,7 @@
     (obj (format out "~A" obj))))
 
 (defun make-code-block-handler (expr)
-  (let ((commands (mapcar #'make-command-handler  expr)))
+  (let ((commands (remove nil (mapcar #'make-command-handler  expr))))
     (alexandria:named-lambda code-block-handler (env out)
       (iter (for command in commands)
             (funcall command env out)))))
@@ -118,7 +131,8 @@
        (closure-template.parser:for-tag
         (make-for-command-handler cmd))
        (closure-template.parser:with
-        (make-with-command-handler cmd))))))
+        (make-with-command-handler cmd))
+       (closure-template.parser:comment nil)))))
 
 ;;;; literal
 
@@ -191,6 +205,26 @@
 
 ;;;; foreach
 
+(defvar *loops-vars* nil)
+
+(defun index (symbol)
+  (second (assoc symbol *loops-vars*)))
+
+(defun is-first (symbol)
+  (= 0 (index symbol)))
+
+(defun is-last (symbol)
+  (let ((var (assoc symbol *loops-vars*)))
+    (= (second var)
+       (third var))))
+
+(defun make-foreach-function-handler (symbol varname)
+  (case symbol
+    (:index #'(lambda (env) (declare (ignore env)) (index varname)))
+    (:is-first #'(lambda (env) (declare (ignore env)) (is-first varname)))
+    (:is-last #'(lambda (env) (declare (ignore env)) (is-last varname)))))
+
+
 (defun make-foreach-command-handler (cmd)
   (assert (eq 'closure-template.parser:foreach (car cmd)))
   (let ((varname (second (first (second cmd))))
@@ -203,12 +237,15 @@
           ((or (null seq)
                (= (length seq) 0))
            (funcall empty-handler env out))
-          (t (map 'nil
-                  (alexandria:named-lambda foreach-body-handler (item)
-                    (funcall body
-                             (list* varname item env)
-                             out))
-                  seq)))))))
+          (t (let* ((varinfo (list 0 (1- (length seq))))
+                    (*loops-vars* (acons varname varinfo *loops-vars*)))
+               (map 'nil
+                    (alexandria:named-lambda foreach-body-handler (item)                      
+                      (funcall body
+                               (list* varname item env)
+                               out)
+                      (incf (first varinfo)))
+                    seq))))))))
 
 ;;;; for
 
@@ -232,7 +269,7 @@
                        (list* varname i env)
                        out))))))
   
-;;; with
+;;;; with
 
 (defun make-with-command-handler (cmd)
   (assert (eq 'closure-template.parser:with (car cmd)))
@@ -248,4 +285,70 @@
                              (collect (funcall (cdr item) env)))
                        env)
                out))))
+
+;;;; call
+
+;;(list* 'call name data params)
+
+;; (defun make-call-command-hadler (cmd)
+;;   (destructuring-bind (name data &rest params)
   
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; namespace
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun make-namespace-package (&optional (name "closure-template.share"))
+  (let ((lispified-name (if (stringp name)
+                            (lispify-string name)
+                            name)))
+    (or (find-package lispified-name)
+        (make-package lispified-name
+                      :use '(#:cl)))))
+
+(defparameter *default-closure-template-package*
+  (make-namespace-package "closure-template.share"))
+
+(defvar *template-data* nil)
+
+(defun has-data (env)
+  (declare (ignore env))
+  (if *template-data* t))
+
+
+(defun make-namespace-function (expr package)
+  (destructuring-bind (name &key (autoescape t)) (second expr)
+    (let ((symbol (intern (lispify-string name) package)))
+      (export symbol package)
+      (proclaim (list 'ftype 'function symbol))
+      (setf (symbol-function symbol)
+            (let ((handler (let ((*autoescape*  autoescape))
+                             (make-code-block-handler (cddr expr)))))
+              (alexandria:named-lambda template-handler (&optional env)
+                (let ((*template-data* env))
+                  (with-output-to-string (out)
+                    (funcall handler env out)))))))))
+  
+
+(defun compile-namespace (data)
+  (let ((package (if (second data)
+                     (make-namespace-package (second data))
+                     *default-closure-template-package*)))
+    (iter (for tmpl in (cddr data))
+          (make-namespace-function tmpl package))))
+    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; compile template
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defclass common-lisp-backend () ())
+
+(defmethod compile-template ((backend (eql :common-lisp-backend)) template)
+  (compile-template (make-instance 'common-lisp-backend)
+                    template))
+
+(defmethod compile-template ((backend common-lisp-backend) template)
+  (compile-namespace (parse-template template)))
+
+(defmethod compile-template ((backend common-lisp-backend) (templates list))
+  (map 'nil 'compile-namespace templates))
+

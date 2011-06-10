@@ -37,9 +37,9 @@
            #:parse-expression
            #:translate-template
            #:compile-template
-           #:*default-translate-package*
+           #:*default-closure-template-package*
            #:*default-js-namespace*
-           #:make-template-package
+           #:make-namespace-package
            #:escape-html
            #:encode-uri
            #:encode-uri-component

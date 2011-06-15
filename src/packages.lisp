@@ -31,16 +31,29 @@
            #:comment))
 
 (defpackage #:closure-template
-  (:use #:cl #:iter)
+  (:use #:cl #:iter #:alexandria)
   (:import-from #:closure-template.parser #:parse-template  #:parse-expression #:not-equal #:lispify-string)
   (:export #:parse-template
            #:parse-expression
            #:translate-template
            #:compile-template
-           #:*default-translate-package*
+           #:*default-closure-template-package*
            #:*default-js-namespace*
-           #:make-template-package
+           #:make-namespace-package
            #:escape-html
            #:encode-uri
            #:encode-uri-component
-           #:decode-uri))
+           #:decode-uri
+
+           ;; ttable
+           #:*ttable*
+           #:ttable
+           #:ttable-find-template
+           #:ttable-register-template
+           #:ttable-call-template
+           #:ttable-template-name-list
+           #:ttable-clean-package
+           #:ttable-extend-package
+           #:ttable-sync-package
+           #:ensure-ttable-package
+           #:package-ttable))

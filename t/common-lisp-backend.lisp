@@ -9,14 +9,14 @@
 
 (deftestsuite common-lisp-backend-test (closure-template-test) ()
               (:run-setup :once-per-test-case )
-              (:dynamic-variables *default-translate-package*)
-              (:setup (setf *default-translate-package*
-                            (make-template-package :closure-template.test.templates)))
-              (:teardown (when (find-package *default-translate-package*)
-                           (delete-package *default-translate-package*))))
+              (:dynamic-variables *default-closure-template-package*)
+              (:setup (setf *default-closure-template-package*
+                            (ensure-ttable-package "CLOSURE-TEMPLATE.TEST.TEMPLATES")))
+              (:teardown (when (find-package *default-closure-template-package*)
+                           (delete-package *default-closure-template-package*))))
 
 (defun template-call (name &optional data)
-  (funcall (find-symbol name *default-translate-package*)
+  (funcall (find-symbol name *default-closure-template-package*)
            data))
 
 ;;;; simple
@@ -146,7 +146,7 @@ Hello world{/template}")
   (ensure-null (progn
                  (compile-template :common-lisp-backend
                                    "{template calculate}{randomInt(10)}{/template}")
-                 (let ((fun (find-symbol "CALCULATE" *default-translate-package*)))
+                 (let ((fun (find-symbol "CALCULATE" *default-closure-template-package*)))
                    (iter (repeat 100)
                          (let ((i (parse-integer (funcall fun))))
                            (if (or (> i 9)

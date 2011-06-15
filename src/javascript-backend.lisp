@@ -9,6 +9,7 @@
 
 (defclass javascript-backend (common-lisp-backend) ())
 
+(defvar *local-variables* nil)
 
 (defparameter *js-print-target* '$template-output$
   "Name variable for concatenate output strings")

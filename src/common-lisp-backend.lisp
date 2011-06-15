@@ -118,6 +118,13 @@
            (iter (for arg in args)
                  (collect (funcall arg env))))))
 
+(defvar *user-functions* nil)
+
+(defun find-user-function (name)
+  (cdr (assoc name
+              *user-functions*
+              :test #'string=)))
+
 (defun make-function-handler (symbol args)
   (case symbol
     ((getf elt)
@@ -144,6 +151,7 @@
                                            (find-symbol (symbol-name symbol)
                                                         '#:closure-template))
                                       (find symbol  closure-template.parser::*infix-ops-priority*)
+                                      (find-user-function (symbol-name symbol))
                                       (error "Bad function ~A" symbol))
                                   args))))
 

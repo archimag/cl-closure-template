@@ -48,6 +48,7 @@
            ;; ttable
            #:*ttable*
            #:ttable
+           #:ttable-clear
            #:ttable-find-template
            #:ttable-register-template
            #:ttable-call-template

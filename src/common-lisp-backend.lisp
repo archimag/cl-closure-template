@@ -17,6 +17,9 @@
   ((hash :initform (make-hash-table :test 'equal) :reader ttable-hash)
    (prototype :initarg :prototype :initform nil :reader ttable-prototype)))
 
+(defun ttable-clear (ttable)
+  (clrhash (ttable-hash ttable)))
+
 (defun ttable-find-template (ttable lname)
   (or (gethash lname (ttable-hash ttable))
       (let ((prototype (ttable-prototype ttable)))

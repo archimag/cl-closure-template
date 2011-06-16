@@ -8,9 +8,6 @@
 ;; http://code.google.com/p/cl-closure-template/
 (asdf:operate 'asdf:load-op '#:closure-template)
 
-;; http://common-lisp.net/project/parenscript/
-(asdf:operate 'asdf:load-op '#:parenscript)
-
 ;; http://www.cliki.net/RESTAS
 (asdf:operate 'asdf:load-op '#:restas)
 
@@ -74,17 +71,17 @@
 ;;;; routes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(restas:define-route file ("resources/:file")
-  (merge-pathnames (format nil "resources/~A" file)
-                   *dir*))
+(restas:define-route messages.js ("messages.js")
+  (merge-pathnames "messages.js" *dir*))
+
+(restas:define-route templates.js ("templates.js"
+                                   :content-type "text/javascript")
+  *js-templates*)
 
 (restas:define-route jquery ("jquery/jquery:(str).js")
   (merge-pathnames (format nil "jquery~A.js" str)
                    *jquery-dir*))
 
-(restas:define-route templates.js ("resources/templates.js"
-                                   :content-type "text/javascript")
-  *js-templates*)
 
 (restas:define-route all-messages ("/"
                                    :render-method 'messages:show-all-messages)

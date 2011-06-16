@@ -5,14 +5,24 @@
 //
 // Author: Moskvitin Andrey <archimag@gmail.com>
 
+// init
+
+$(document).ready(function () {
+    $('.showmsg').click(showDetailMsg);
+    $('#createmsg').click(showCreateForm);
+});
+
+
 // show message detail
 
 function showDetailMsg () {
-    $.getJSON($(this).attr("href"), function (obj) {
-        return function (data) {
-            obj.replaceWith(messages.showMessageDetail(data));
-        }
-    }($(this).parent()));
+    var self = $(this);
+    
+    function impl (data) {
+        self.parent().replaceWith(messages.showMessageDetail(data));
+    }
+    
+    $.getJSON(self.attr("href"), impl);
 }
 
 // new message
@@ -42,10 +52,4 @@ function showCreateForm () {
     }
 }
 
-// init
-
-$(document).ready(function () {
-    $('.showmsg').click(showDetailMsg);
-    $('#createmsg').click(showCreateForm);
-});
 

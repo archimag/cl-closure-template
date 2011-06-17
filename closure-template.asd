@@ -12,7 +12,7 @@
                                      (:file "parser" :depends-on ("packages"))
                                      (:file "translate" :depends-on ("parser"))
                                      (:file "escape" :depends-on ("packages"))
-                                     (:file "common-lisp-backend" :depends-on ("parser" "escape"))
+                                     (:file "common-lisp-backend" :depends-on ("parser" "escape" "translate"))
                                      (:file "javascript-backend" :depends-on ("parser"))
                                      (:file "standard-templates" :depends-on ("common-lisp-backend"))))))
 

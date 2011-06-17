@@ -53,7 +53,9 @@
      (2 font-lock-function-name-face))))
 
 (defvar *closure-template-literal-keywords*
-  `((,(rx (or "{literal}" "{/literal}"))
+  `((,(rx "{"
+          (group (or "literal" "/literal"))
+          "}")
      (1 closure-template-tag-face)
      (2 font-lock-function-name-face))))
 
@@ -185,13 +187,15 @@
                                     str))
                     (list *closure-template-template-keywords*
                           *closure-template-foreach-keywords*
-                          *closure-template-if-switch-keywords*))
+                          *closure-template-if-switch-keywords*
+                          *closure-template-literal-keywords*))
               (some (lambda (obj)
                       (string-match (caadr obj)
                                     str))
                     (list *closure-template-template-keywords*
                           *closure-template-foreach-keywords*
-                          *closure-template-if-switch-keywords*)))))))
+                          *closure-template-if-switch-keywords*
+                          *closure-template-literal-keywords*)))))))
 
 (defun closure-tag-opened ()
   (save-excursion
@@ -203,7 +207,8 @@
                                 str))
                 (list *closure-template-template-keywords*
                       *closure-template-foreach-keywords*
-                      *closure-template-if-switch-keywords*))))))
+                      *closure-template-if-switch-keywords*
+                      *closure-template-literal-keywords*))))))
 
 (defun closure-previous-indent ()
   (save-excursion

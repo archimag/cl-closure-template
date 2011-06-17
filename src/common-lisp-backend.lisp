@@ -32,12 +32,15 @@
   (setf (gethash lname (ttable-hash ttable))
         template))
 
-(defun ttable-call-template (ttable name env out)
-  (let ((template (ttable-find-template ttable name))
-        (*ttable* ttable))
-    (unless template
-      (error "Template ~A is undefined" template))
-    (funcall template env out)))
+(defun ttable-call-template (ttable name env &optional out)
+  (if out
+      (let ((template (ttable-find-template ttable name))
+            (*ttable* ttable))
+        (unless template
+          (error "Template ~A is undefined" template))
+        (funcall template env out))
+      (with-output-to-string (out)
+        (ttable-call-template ttable name env out))))
 
 (defun ttable-template-name-list (ttable)
   (sort (if (ttable-prototype ttable)

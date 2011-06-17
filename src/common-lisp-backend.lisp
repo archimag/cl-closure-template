@@ -48,8 +48,10 @@
 
 (defun ttable-clean-package (ttable package)
   (do-external-symbols (symbol package)
-    (unless (gethash (symbol-name symbol) (ttable-hash ttable))
-      (unintern symbol package))))
+    (let ((sname (symbol-name symbol))) 
+    (unless (or (string= sname "*PACKAGE-TTABLE*")
+                (gethash sname (ttable-hash ttable)))
+      (unintern symbol package)))))
 
 (defun ttable-extend-package (ttable package)
   (dolist (name (ttable-template-name-list ttable))

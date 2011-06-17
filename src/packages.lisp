@@ -36,7 +36,6 @@
   (:export #:parse-template
            #:parse-expression
            #:translate-template
-           #:compile-template
            #:*default-closure-template-package*
            #:*default-js-namespace*
            #:make-namespace-package
@@ -44,6 +43,9 @@
            #:encode-uri
            #:encode-uri-component
            #:decode-uri
+
+           #:compile-template
+           #:compile-cl-templates
 
            ;; ttable
            #:*ttable*

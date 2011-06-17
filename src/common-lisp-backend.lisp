@@ -453,4 +453,6 @@
   (iter (for tmpl in templates)
         (compile-template backend tmpl)))
 
-
+(defun compile-cl-templates (templates)
+  (compile-template :common-lisp-backend
+                    templates))

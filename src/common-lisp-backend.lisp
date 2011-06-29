@@ -126,6 +126,13 @@
            (iter (for arg in args)
                  (collect (funcall arg env))))))
 
+(defun make-or-handler (args)
+  (let ((a (first args))
+        (b (second args)))
+  (named-lambda or-handler (env)
+      (or (funcall a env)
+          (funcall b env)))))
+
 (defvar *user-functions* nil)
 
 (defun find-user-function (name)
@@ -139,7 +146,10 @@
      (make-simple-function-hadler (symbol-function symbol) args))
     (+
      (make-simple-function-hadler #'+/closure-template args))
-    
+
+    (or
+     (make-or-handler args))
+     
     (:round
      (make-simple-function-hadler #'round/closure-template args))
     

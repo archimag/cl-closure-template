@@ -447,7 +447,8 @@
                                           (let ((*template-data* env))
                                             (funcall handler env out)))
                                         :supersede t))))
-    (ttable-extend-package ttable package)))
+    (ttable-extend-package ttable package)
+    package))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; compile template

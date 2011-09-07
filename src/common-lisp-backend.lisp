@@ -39,8 +39,9 @@
         (unless template
           (error "Template ~A is undefined" template))
         (funcall template env out))
-      (with-output-to-string (out)
-        (ttable-call-template ttable name env out))))
+      (let ((*print-pretty* nil))
+        (with-output-to-string (out)
+          (ttable-call-template ttable name env out)))))
 
 (defun ttable-template-name-list (ttable)
   (sort (if (ttable-prototype ttable)
@@ -64,8 +65,9 @@
         (proclaim (list 'ftype 'function symbol))
         (setf (symbol-function symbol)
               (named-lambda template-handler (&optional env)
-                (with-output-to-string (out)
-                  (ttable-call-template ttable name env out))))))))
+                (let ((*print-pretty* nil))
+                  (with-output-to-string (out)
+                    (ttable-call-template ttable name env out)))))))))
 
 (defun ttable-sync-package (ttable package)
   (ttable-clean-package ttable package)
@@ -400,8 +402,9 @@
       (make-expression-handler (third param))
       (let ((body (make-code-block-handler (cdddr param))))
         (named-lambda full-param-handler (env)
-          (with-output-to-string (out)
-            (funcall body env out))))))
+          (let ((*print-pretty* nil))
+            (with-output-to-string (out)
+              (funcall body env out)))))))
 
 (defun make-call-command-hadler (cmd)
   (destructuring-bind (name data &rest params) (cdr cmd)

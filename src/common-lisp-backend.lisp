@@ -52,7 +52,7 @@
 
 (defun ttable-clean-package (ttable package)
   (do-external-symbols (symbol package)
-    (let ((sname (symbol-name symbol))) 
+    (let ((sname (symbol-name symbol)))
     (unless (or (string= sname "*PACKAGE-TTABLE*")
                 (gethash sname (ttable-hash ttable)))
       (unintern symbol package)))))
@@ -108,10 +108,46 @@
 (defun != (arg1 arg2)
   (not (equal arg1 arg2)))
 
+(defgeneric %same-name (s1 s2)
+  (:method ((s1 symbol) (s2 symbol))
+    (string-equal (symbol-name s1) (symbol-name s2)))
+  (:method ((s1 string) (s2 symbol))
+    (string-equal s1 (symbol-name s2)))
+  (:method ((s1 symbol) (s2 string))
+    (string-equal (symbol-name s1) s2))
+  (:method ((s1 string) (s2 string))
+    (string-equal s1 s2))
+  (:method (s1 (s2 number))
+    (%same-name s1 (write-to-string s2)))
+  (:method ((s1 number) s2)
+    (%same-name (write-to-string s1) s2))
+  (:method (s1 s2)
+    nil))
+
+(defgeneric fetch-property (map key)
+  (:method ((map hash-table) key)
+    (multiple-value-bind (val found) (gethash key map)
+      (if (not found)
+          (gethash (symbol-name key) map)
+          val)))
+  (:method ((map list) key)
+    (if (listp (car map))
+        (cdr (assoc key map :test #'%same-name))
+        (cadr (member key map :test #'%same-name))))
+  (:method ((obj standard-object) key)
+    (iter (for slot in (closer-mop:class-slots (class-of obj)))
+          (for name = (closer-mop:slot-definition-name slot))
+          (when (and (slot-boundp obj name)
+                     (%same-name name key))
+            (return (slot-value obj name))))))
+
+(defun make-dot-handler (hash key)
+  (named-lambda dot-handler (env)
+    (fetch-property (funcall hash env) (funcall key env))))
 
 (defun make-variable-handler (varkey)
   (named-lambda variable-handler (env)
-    (getf env varkey)))
+    (fetch-property env varkey)))
 
 (defun make-if-function-handler (condition success fail)
   (let ((condition-expr (make-expression-handler condition))
@@ -140,21 +176,23 @@
 (defun find-user-function (name)
   (cdr (assoc name
               *user-functions*
-              :test #'string=)))
+              :test #'%same-name)))
 
 (defun make-function-handler (symbol args)
   (case symbol
-    ((getf elt)
+    (getf
+     (make-dot-handler (first args) (second args)))
+    (elt
      (make-simple-function-hadler (symbol-function symbol) args))
     (+
      (make-simple-function-hadler #'+/closure-template args))
 
     (or
      (make-or-handler args))
-     
+
     (:round
      (make-simple-function-hadler #'round/closure-template args))
-    
+
     (:not-equal
      (make-simple-function-hadler (named-lambda not-equal (x y)
                                     (not (equal x y)))
@@ -170,8 +208,8 @@
                                                  :test #'string=)
                                            (find-symbol (symbol-name symbol)
                                                         '#:closure-template))
-                                      (find symbol  closure-template.parser::*infix-ops-priority*)
-                                      (find-user-function (symbol-name symbol))
+                                      (find symbol closure-template.parser::*infix-ops-priority*)
+                                      (find-user-function symbol)
                                       (error "Bad function ~A" symbol))
                                   args))))
 
@@ -181,7 +219,7 @@
      (case (car expr)
        (:variable
         (make-variable-handler (second expr)))
-       ((:is-first :is-last :index)        
+       ((:is-first :is-last :index)
         (make-foreach-function-handler (car expr) (second (second expr))))
        (if
         (make-if-function-handler (first (cdr expr))
@@ -343,7 +381,7 @@
           (t (let* ((varinfo (list 0 (1- (length seq))))
                     (*loops-vars* (acons varname varinfo *loops-vars*)))
                (map 'nil
-                    (named-lambda foreach-body-handler (item)                      
+                    (named-lambda foreach-body-handler (item)
                       (funcall body
                                (list* varname item env)
                                out)

@@ -124,6 +124,22 @@
   (:method (s1 s2)
     nil))
 
+(defgeneric %nonblank (el)
+  (:method ((el string))
+    (unless (every (lambda (ch) (char= ch #\Space)) el) el))
+  (:method ((el (eql :null)))   ; postmodern uses this for NULL fields
+    nil)
+  (:method ((el (eql 0)))
+    nil)
+  (:method ((el (eql 0.0)))
+    nil)
+  (:method ((el (eql nil)))
+    nil)
+  (:method ((el array))
+    (< 0 (length el)))
+  (:method (el)
+    el))
+
 (defgeneric fetch-property (map key)
   (:method ((map hash-table) key)
     (multiple-value-bind (val found) (gethash key map)
@@ -149,8 +165,13 @@
   (named-lambda variable-handler (env)
     (fetch-property env varkey)))
 
+(defun make-boolean-expression-handler (expr)
+  (let ((expr (make-expression-handler expr)))
+    (named-lambda boolean-handler (env)
+      (%nonblank (funcall expr env)))))
+
 (defun make-if-function-handler (condition success fail)
-  (let ((condition-expr (make-expression-handler condition))
+  (let ((condition-expr (make-boolean-expression-handler condition))
         (success-expr (make-expression-handler success))
         (fail-expr (make-expression-handler fail)))
     (named-lambda if-function-handler (env)
@@ -167,9 +188,20 @@
 (defun make-or-handler (args)
   (let ((a (first args))
         (b (second args)))
-  (named-lambda or-handler (env)
-      (or (funcall a env)
-          (funcall b env)))))
+    (named-lambda or-handler (env)
+      (or (%nonblank (funcall a env))
+          (%nonblank (funcall b env))))))
+
+(defun make-and-handler (args)
+  (let ((a (first args))
+        (b (second args)))
+    (named-lambda or-handler (env)
+      (and (%nonblank (funcall a env))
+           (%nonblank (funcall b env))))))
+
+(defun make-not-handler (expr)
+  (named-lambda not-handler (env)
+    (not (%nonblank (funcall expr env)))))
 
 (defvar *user-functions* nil)
 
@@ -189,6 +221,10 @@
 
     (or
      (make-or-handler args))
+    (and
+     (make-and-handler args))
+    (not
+     (make-not-handler (first args)))
 
     (:round
      (make-simple-function-hadler #'round/closure-template args))
@@ -314,7 +350,7 @@
 (defun make-if-command-handler (cmd)
   (assert (eq 'closure-template.parser:if-tag (car cmd)))
   (let ((clauses (iter (for clause in (cdr cmd))
-                       (collect (cons (make-expression-handler (first clause))
+                       (collect (cons (make-boolean-expression-handler (first clause))
                                       (make-code-block-handler (second clause)))))))
     (named-lambda if-command-handler (env out)
       (iter (for clause in clauses)

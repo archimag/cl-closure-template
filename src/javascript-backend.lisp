@@ -253,9 +253,6 @@
                         ))))
           `(progn ,@(reverse call-expr)
                   ,(list fun-name '_$data$_ *js-print-target*))))))
-                  ,(backend-print backend
-                                  (list fun-name '_$data$_ )
-                                  (list :escape-mode :no-autoescape)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; translate and compile template methods

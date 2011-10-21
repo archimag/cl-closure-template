@@ -31,19 +31,16 @@
                        'string)))
 
 (defmethod backend-print ((backend javascript-backend) expr &optional directives)
-  (list 'setf
-        *js-print-target*
-        (list 'ps:+
-              *js-print-target*
-              (case (or (getf directives :escape-mode)
-                        (if *autoescape* :escape-html :no-autoescape))
-                (:no-autoescape expr)
-                (:id `(encode-u-r-i-component ,expr))
-                (:escape-uri `(encode-u-r-i ,expr))
-                (:escape-html `(let ((val ,expr))
-                                 (if (= (ps:typeof val) "string")
-                                     ((ps:@ ((ps:@ ((ps:@ ((ps:@ ((ps:@ val replace) (ps:regex "/&/g") "&amp;") replace) (ps:regex "/</g") "&lt;") replace) (ps:regex "/>/g") "&gt;") replace) (ps:regex "/\"/g") "&quot;") replace) (ps:regex "/'/g") "&#039;")
-                                     val)))))))
+  (list (list'ps:@ *js-print-target* 'push)
+        (case (or (getf directives :escape-mode)
+                  (if *autoescape* :escape-html :no-autoescape))
+          (:no-autoescape expr)
+          (:id `(encode-u-r-i-component ,expr))
+          (:escape-uri `(encode-u-r-i ,expr))
+          (:escape-html `(let ((val ,expr))
+                           (if (= (ps:typeof val) "string")
+                               ((ps:@ ((ps:@ ((ps:@ ((ps:@ ((ps:@ val replace) (ps:regex "/&/g") "&amp;") replace) (ps:regex "/</g") "&lt;") replace) (ps:regex "/>/g") "&gt;") replace) (ps:regex "/\"/g") "&quot;") replace) (ps:regex "/'/g") "&#039;")
+                               val))))))
 
 
 (defmethod translate-expression ((backend javascript-backend) expr)
@@ -88,7 +85,6 @@
     (cons first
           (mapcar #'second rest))))
 
-;;(split-sequence:split-sequence #\. (car args))
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:namespace)) args)
   (let* ((*js-namespace* (if (car args)
                           (cons 'ps:@
@@ -103,7 +99,7 @@
                                                     `(when (= (ps:typeof ,part) "undefined")
                                                        (setf ,part (ps:create)))
                                                     `(when (= (ps:typeof ,part) "undefined")
-                                                       (defvar ,part (ps:create)))))))))
+                                                       (setf ,part (ps:create)))))))))
                  (iter (for fun in (cdr args))
                        (collect (translate-item backend
                                                 fun))))))
@@ -115,16 +111,16 @@
   (make-symbol (format nil "~A-SEQ" loop-var)))
 
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:template)) args)
-  (let* ((*template-variables* nil)
-         (body (let ((*autoescape* (if (find :autoescape (cdar args))
+  (let* ((body (let ((*autoescape* (if (find :autoescape (cdar args))
                                        (getf (cdar args) :autoescape)
                                        *autoescape*)))
                  (translate-item backend
                                  (cdr args)))))
     `(setf (,@*js-namespace* ,(js-string-to-symbol (caar args)))
-         (lambda ($$data$$)
+         (lambda ($$data$$ $$template-output$$)
            (defvar $data$ (or $$data$$ (ps:create)))
-           (defvar $template-output$ "")
+           (defvar $template-output$
+             (or $$template-output$$ (array)))
            (macrolet ((has-data () '(if $$data$$ t))
                       (index (var) `,(js-loop-variable-counter-symbol var))
                       (is-first (var) `(= 0 (index ,var)))
@@ -135,7 +131,8 @@
                                (/ (round (* ,number factor)) factor))
                              (round ,number))))             
              ,body)
-           $template-output$))))
+           (unless $$template-output$$
+             (funcall (ps:@ $template-output$ join) ""))))))
 
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:with)) args)
   (let ((*local-variables* *local-variables*))
@@ -146,10 +143,8 @@
        ,(translate-item backend (second args)))))
 
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:literal)) args)
-  (list 'setf *js-print-target*
-        (list 'ps:+
-              *js-print-target*
-              (car args))))
+  (list (list'ps:@ *js-print-target* 'push)
+        (car args)))
         
 (defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:foreach)) args)
   (let* ((loop-var (make-symbol (string-upcase (second (first (first args))))))
@@ -242,20 +237,24 @@
                     call-expr)))
           (iter (for param in params)
                 (let ((slotname `(ps:@ _$data$_ ,(make-symbol (symbol-name (second (second param)))))))
-                  (push `(setf ,slotname "")
-                        call-expr)
                   (if (third param)
                       (push `(setf ,slotname
                                    ,(translate-expression backend
                                                           (third param)))
                             call-expr)
                       (let ((*js-print-target* slotname))
+                        (push `(setf ,slotname (array))
+                              call-expr)
                         (push (translate-item backend
                                               (cdddr param))
-                              call-expr)))))
+                              call-expr)
+                        (push `(setf ,slotname ((ps:@ ,slotname join) ""))
+                              call-expr)
+                        ))))
           `(progn ,@(reverse call-expr)
+                  ,(list fun-name '_$data$_ *js-print-target*))))))
                   ,(backend-print backend
-                                  (list fun-name '_$data$_)
+                                  (list fun-name '_$data$_ )
                                   (list :escape-mode :no-autoescape)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

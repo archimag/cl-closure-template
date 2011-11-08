@@ -221,22 +221,23 @@
         (data-param (cond
                       ((eql (second args) :all) '$data$)
                       ((second args) (translate-expression backend (second args)))))
-        (params (cddr args)))
+        (params (cddr args))
+        (_data_ (ps:ps-gensym)))
     (if (not params)
         (backend-print backend
                        (if data-param
                            (list fun-name data-param)
                            (list fun-name))
                        (list :escape-mode :no-autoescape))
-        (let ((call-expr '((defvar _$data$_ (ps:create)))))
+        (let ((call-expr `((defvar ,_data_ (ps:create)))))
           (when data-param
             (let ((lvar (gensym "$_")))
               (push `(ps:for-in (,lvar ,data-param)
-                                (setf (aref _$data$_ ,lvar)
+                                (setf (aref ,_data_ ,lvar)
                                       (aref ,data-param ,lvar)))
                     call-expr)))
           (iter (for param in params)
-                (let ((slotname `(ps:@ _$data$_ ,(make-symbol (symbol-name (second (second param)))))))
+                (let ((slotname `(ps:@ ,_data_ ,(make-symbol (symbol-name (second (second param)))))))
                   (if (third param)
                       (push `(setf ,slotname
                                    ,(translate-expression backend
@@ -252,7 +253,7 @@
                               call-expr)
                         ))))
           `(progn ,@(reverse call-expr)
-                  ,(list fun-name '_$data$_ *js-print-target*))))))
+                  ,(list fun-name _data_ *js-print-target*))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; translate and compile template methods

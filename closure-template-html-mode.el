@@ -56,8 +56,7 @@
   `((,(rx "{"
           (group (or "literal" "/literal"))
           "}")
-     (1 closure-template-tag-face)
-     (2 font-lock-function-name-face))))
+     (1 closure-template-tag-face))))
 
 (defvar *closure-template-template-keywords*
   `((,(rx "{"

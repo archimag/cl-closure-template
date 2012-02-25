@@ -195,7 +195,7 @@
 (defun make-and-handler (args)
   (let ((a (first args))
         (b (second args)))
-    (named-lambda or-handler (env)
+    (named-lambda and-handler (env)
       (and (%nonblank (funcall a env))
            (%nonblank (funcall b env))))))
 

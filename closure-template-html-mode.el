@@ -73,6 +73,36 @@
           "}")
      (1 closure-template-tag-face))))
 
+(defvar *closure-template-css-keywords*
+  `((,(rx "{"
+          (group "css")
+          (1+ space)
+          (group (1+ (not space)))
+          (0+ space)
+          "}")
+     (1 closure-template-tag-face)
+     (2 font-lock-function-name-face))))
+
+(defvar *closure-template-msg-keywords*
+  `((,(rx "{"
+          (group "msg")
+          (1+ space)
+          (group "desc")
+	  (0+ space)
+	  (group "=")
+	  (0+ space)
+	  (group "\"")
+          (0+ (not (any "}" "\"")))
+          (0+ space)          
+	  (group "\"")
+	  (0+ space)
+          "}")
+     (1 closure-template-tag-face)
+     (2 font-lock-function-name-face))
+    (,(rx "{"
+          (group  "/msg")
+          "}")
+     (1 closure-template-tag-face))))
 
 (defvar *closure-template-variable-keywords*
   `((,(rx "$"
@@ -130,6 +160,9 @@
           *closure-template-substition-keywords*
           *closure-template-foreach-keywords*
           *closure-template-if-switch-keywords*
+
+	  *closure-template-css-keywords*
+	  *closure-template-msg-keywords*
 
           closure-template-html-font-lock-keywords-1
           closure-template-html-font-lock-keywords-2))

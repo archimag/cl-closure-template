@@ -16,6 +16,7 @@
                                      (:file "command")
                                      (:file "expression")))
                (:file "defpackage")
+               (:file "asdf" :depends-on ("defpackage"))
                (:module "common-lisp-backend"
                         :pathname ""
                         :serial t

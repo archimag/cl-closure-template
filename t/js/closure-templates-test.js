@@ -92,6 +92,12 @@ ClosureTemplate.Test.testCalculate = function () {
                      closureTemplate.js.testCalculate10({ val: 6 }));
     this.assertEqual('false',
                      closureTemplate.js.testCalculate10({ val: 5 }));
+
+    this.assertEqual('3',
+                     closureTemplate.js.testCalculate11({ array: [0, 1, 2] }));
+    this.assertEqual('7',
+                     closureTemplate.js.testCalculate11({ array: [0, 1, 2, 3, 4, 5, 6] }));
+    
 };
 
 // Random

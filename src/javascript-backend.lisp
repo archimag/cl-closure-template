@@ -146,6 +146,9 @@
            (write-expression (first args) out)))
         ((string= name "round")
          (write-simple-funcall (format nil "~A.$round$" *js-namespace*)))
+        ((string= name "length")
+         (write-expression (first args) out)
+         (write-string ".length" out))
         (t
          (write-simple-funcall (format nil "Math.~A" name)))))))
 

@@ -65,7 +65,7 @@
 (defun write-indent (out)
   (dotimes (i (* 4 *indent-level*))
     (write-char #\Space out)))
-               
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; expressions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -197,7 +197,7 @@
            (write-expression (second args) out)
            (write-string " : " out)
            (write-expression (third args) out)))))))
-                        
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; commands
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -274,7 +274,7 @@
              (with-write-parenthesis (out)
                (write-expression (first option) out))))
           (write-line " {" out)
-          (with-increase-indent 
+          (with-increase-indent
             (write-command (second option) out))
           (write-indent out)
           (write-line "}" out))))
@@ -320,7 +320,7 @@
   (let* ((varname (var-jsname (foreach-varname cmd)))
          (seqname (format nil "$sequence_~A$" varname))
          (counter-name (format nil "$counter_~A$" varname)))
-    
+
     (write-indent out)
     (format out "var ~A = " seqname)
     (write-expression (foreach-expression cmd) out)
@@ -429,11 +429,11 @@
 (defun write-call-with-params (cmd out)
   (incf *symbol-counter*)
   (let ((new-env-name (format nil "$env_~A$" *symbol-counter*)))
-    
+
     (let ((data (call-data cmd)))
       (write-indent out)
       (format out "var ~A = " new-env-name)
-      
+
       (cond
         ((eql data :all)
          (format out "~A.$objectFromPrototype$($env$)" *js-namespace*))
@@ -443,21 +443,21 @@
          (format out "~A.$objectFromPrototype$" *js-namespace*)
          (with-write-parenthesis (out)
            (write-expression data out))))
-      
+
       (write-line ";" out))
 
     (iter (for param in (call-params cmd))
           (for param-name = (var-jsname (first param)))
-          
+
           ;; short param
-          (when (second param) 
+          (when (second param)
             (write-indent out)
             (format out "~A.~A = " new-env-name param-name)
             (write-expression (second param) out)
             (write-line ";" out))
-            
+
           ;; full param
-          (when (third param) 
+          (when (third param)
             (incf *symbol-counter*)
 
             (write-indent out)
@@ -484,7 +484,7 @@
   (write-call-name cmd out)
   (with-write-parenthesis (out)
     (let ((data (call-data cmd)))
-      (cond 
+      (cond
         ((eql data :all)
          (write-string "$env$" out))
         ((eql data nil)
@@ -512,7 +512,7 @@
           "~&~A.~A = function($env$, $target$) {~&"
           *js-namespace*
           (template-name tmpl))
-  
+
   (let ((*indent-level* 1)
         (*autoescape* (getf (template-properties tmpl) :autoescape t)))
     (write-indent out)
@@ -528,18 +528,15 @@
     (write-line "if (!$target$) return $result$.join('');" out)
     (write-indent out)
     (write-line "else return null;" out)
-    
+
     (write-line "};" out)))
 
 (defun write-namespace (namespace out &aux (name (namespace-name namespace)))
   (write-namespace-declaration name out)
+  (write-namepspace-helpers name out)
   (write-namespace-body name (namespace-templates namespace) out))
 
-(defun write-namespace-declaration (name out)
-  (iter (for pos first (position #\. name) then (position #\. name :start (1+ pos)))
-        (for short-name = (subseq name 0 pos))
-        (format out "if (typeof ~A === 'undefined') { ~A = {}; }~&" short-name short-name)
-        (while pos))
+(defun write-namepspace-helpers (name out)
   (macrolet ((write-function (funname (&optional (args "obj"))  &body body)
                `(progn
                   (write-line "" out)
@@ -574,7 +571,13 @@
     (write-function "$objectFromPrototype$" ()
       (write-line "    function C () {}" out)
       (write-line "    C.prototype = obj;" out)
-      (write-line "    return new C;" out)))
+      (write-line "    return new C;" out))))
+
+(defun write-namespace-declaration (name out)
+  (iter (for pos first (position #\. name) then (position #\. name :start (1+ pos)))
+        (for short-name = (subseq name 0 pos))
+        (format out "if (typeof ~A === 'undefined') { ~A = {}; }~&" short-name short-name)
+        (while pos))
   (values))
 
 (defun write-namespace-body (name templates out)
@@ -590,18 +593,37 @@
   (:method (obj)
     (compile-to-js (parse-template obj))))
 
+(defun compile-to-requirejs (obj)
+  ;(:method ((obj namespace))
+  (with-output-to-string (out)
+    ;(write-namespace obj out)))
+    (write-string "define(function () {
+var module = { };" out)
+    (write-namepspace-helpers "module" out)
+    (write-namespace-body "module" (namespace-templates (parse-template obj)) out)
+    (write-string "return module; });" out)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; namespace/template
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defclass javascript-backend () ())
 
+(defclass requirejs-backend (javascript-backend) ())
+
 (defmethod compile-template ((backend (eql :javascript-backend)) template)
   (compile-template (make-instance 'javascript-backend)
                     template))
 
+(defmethod compile-template ((backend (eql :requirejs-backend)) template)
+  (compile-template (make-instance 'requirejs-backend)
+                    template))
+
 (defmethod compile-template ((backend javascript-backend) template)
   (compile-to-js template))
+
+(defmethod compile-template ((backend requirejs-backend) template)
+  (compile-to-requirejs template))
 
 (defmethod compile-template ((backend javascript-backend) (templates list))
   (let ((namespace-map (make-hash-table :test 'equal)))

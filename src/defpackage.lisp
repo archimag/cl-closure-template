@@ -34,4 +34,5 @@
            #:ttable-extend-package
            #:ttable-sync-package
            #:ensure-ttable-package
-           #:package-ttable))
+           #:package-ttable
+           #:fetch-property))

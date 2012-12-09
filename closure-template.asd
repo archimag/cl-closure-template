@@ -25,9 +25,10 @@
                (:module "javascript-backend"
                         :pathname ""
                         :components ((:file "javascript-backend")))
-               (:module "python-backend"
-                        :pathname ""
-                        :components ((:file "python-backend")))))
+               ;; (:module "python-backend"
+               ;;          :pathname ""
+               ;;          :components ((:file "python-backend")))
+               ))
 
 (defmethod perform ((o test-op) (c (eql (find-system 'closure-template))))
   (operate 'load-op 'closure-template)

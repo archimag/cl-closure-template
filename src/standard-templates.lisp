@@ -8,5 +8,5 @@
 (in-package #:closure-template)
 
 (compile-template :common-lisp-backend
-                  (merge-pathnames "src/standard-templates.tmpl"
+                  (merge-pathnames "standard-templates.tmpl"
                                    (asdf:component-pathname (asdf:find-system '#:closure-template))))

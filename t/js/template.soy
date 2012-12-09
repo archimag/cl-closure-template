@@ -1,0 +1,243 @@
+// -*- closure-template-html -*-
+
+{namespace closureTemplate.js}
+
+{template testSimple1}
+    Hello world!
+{/template}
+
+{template testSimple2}
+    <Hello world>
+{/template}
+
+{template testPrint1}
+    {$arg}
+{/template}
+    
+{template testPrint2 autoescape="false"}
+    {$arg}
+{/template}
+
+{template testPrint3}
+    {$arg|noAutoescape}
+{/template}
+
+{template testPrint4}
+    {$arg |escapeUri}
+{/template}
+
+{template testPrint5}
+    {$arg | id}
+{/template}
+
+{template testPrint6 autoescape="false"}
+    {$arg |escapeHtml}
+{/template}
+
+{template testComment1} //Hello world
+    Hello world
+{/template}
+    
+{template testComment2} /*Hello world*/
+    Hello world
+{/template}
+
+{template testCalculate1}{(2 + 3) * 4}{/template}
+        
+{template testCalculate2}{(2 + 3) * 4}{/template}
+        
+{template testCalculate3}
+    {(20 - 3) %  5}
+{/template}
+        
+{template testCalculate4}
+    {hasData() ? 10 : 'Hello world'}
+{/template}
+
+{template testCalculate5}{randomInt(10)}{/template}
+        
+{template testCalculate6}{$x + $y}{/template}
+
+{template testCalculate7}
+    {not hasData() ? round(3.141592653589793) : round(2.7182817, $num)}
+{/template}
+
+{template testCalculate8}
+    {$array[$index]}
+{/template}
+
+{template testCalculate9}
+    {if $val == 5}true{else}false{/if}
+{/template}
+
+{template testCalculate10}
+    {if $val != 5}true{else}false{/if}
+{/template}
+
+{template testSubstitions}
+    {sp}{nil}{\r}{\n}{\t}{lb}{rb}
+{/template}
+
+{template testDotted1}
+    {$obj.first} {$obj.second}
+{/template}
+
+{template testDotted2}
+    {$obj.msg.first}
+    {$obj.msg.second}
+{/template}
+
+{template testLocal1}
+    {foreach $b in $c}{$b.d}{/foreach}
+{/template}
+
+{template testLocal2}
+    {foreach $b in $c}{$b.d.a}{/foreach}
+{/template}
+
+{template testLiteral1}
+    {literal}'"&{$x}{}{/literal}
+{/template}
+
+{template testLiteral2}
+    {literal}Hello world!
+By world!{/literal}
+{/template}
+
+{template testWith1}
+    {with greetingWord="'Hello'" name="'Andrey'"}
+        {$greetingWord} {$name}
+    {/with}
+{/template}
+
+{template testIf1}
+    {if $name}Hello {$name}{/if}
+{/template}
+
+{template testIf2}
+    Hello
+    {if $name}{$name}{else}Guest{/if}
+{/template}
+
+{template testIf3}
+    {if $hello}Hello {$hello}{elseif $by}By {$by}{elseif $thank}Thank {$thank}{else}Guest?{/if}
+{/template}
+
+{template testSwitch1}
+    {switch $var}{case 0}Variant 1: {$var}{case 1, 'Hello', 2}Variant 2: {$var}{default}Miss!{/switch}
+{/template}
+
+{template testSwitch2}
+    {switch $var}{case 0}Variant 1: {$var}{case 1, 'Hello', 2}Variant 2: {$var}{/switch}
+{/template}
+
+{template testForeach1}
+    {foreach $opernand in $opernands}
+        {sp}{$opernand}
+    {/foreach}
+{/template}
+
+{template testForeach2}
+    {foreach $opernand in $opernands}            
+        {sp}{$opernand}
+    {ifempty}
+        Hello world
+    {/foreach}
+{/template}
+
+{template testForeach3}
+    {foreach $opernand in $opernands}
+        {index($opernand)}
+    {/foreach}
+{/template}
+
+{template testForeach4}
+    {foreach $opernand in $opernands}
+        {if not isFirst($opernand)}+{/if}{$opernand}
+    {/foreach}
+{/template}
+
+{template testForeach5}
+    {foreach $opernand in $opernands}
+        {$opernand}{if not isLast($opernand)}+{/if}
+    {/foreach}
+{/template}
+
+{template testFor1}
+    {for $i in range(5)}{$i}{/for}
+{/template}
+
+{template testFor2}
+    {for $i in range(4, 10)}{$i}{/for}
+{/template}
+
+{template testFor3}
+    {for $i in range($from, $to, $by)}{$i}{/for}
+{/template}
+
+{template testFor4}
+    {for $i in range(5, 8)}
+        {for  $j in range(1, 3)}{$i}{$j}{/for}{sp}
+    {/for}
+{/template}
+
+{template helloWorld}
+    Hello world
+{/template}
+
+{template helloName}
+    Hello {$name}
+{/template}
+
+{template helloName2}
+    Hello {$name} from {$city}
+{/template}
+
+{template testCall1}
+    {call helloWorld /}
+{/template}
+
+{template testCall2}
+    {call helloName}
+        {param name: 'Andrey'/}
+    {/call}
+{/template}
+
+{template testCall3}
+    {call helloName}
+        {param name}Andrey{/param}
+    {/call}
+{/template}
+
+{template testCall4}
+    {call helloName data="all" /}
+{/template}
+
+{template testCall5}
+    {call helloName}
+        {param name}
+            {call helloName data="all"/}
+        {/param}
+    {/call}
+{/template}
+
+{template testCall6}
+    {call helloName data="$author"/}
+{/template}
+
+{template testCall7}
+    {call helloName2 data="$author"}
+        {param name: 'Andrey' /}
+    {/call}
+{/template}
+
+{template testCall8}
+    {call name="'hello' + 'World'" /}
+{/template}
+
+{template testCall9}
+    {call name="'hello' + 'Name'"}
+        {param name: 'Andrey'/}
+    {/call}
+{/template}
+

@@ -363,7 +363,7 @@ Hello world{/template}")
   (ensure-same " alpha beta gamma"
                (progn
                  (compile-template :common-lisp-backend
-                                   "{template test}{foreach $opernand in $opernands} {$opernand}{/foreach}{/template}")
+                                   "{template test}{foreach $opernand in $opernands}{sp}{$opernand}{/foreach}{/template}")
                  (template-call "TEST"
                                 '(:opernands ("alpha" "beta" "gamma"))))))
 
@@ -372,7 +372,7 @@ Hello world{/template}")
   (ensure-same '(" alpha beta gamma"  "Hello world")
                (progn
                  (compile-template :common-lisp-backend
-                                   "{template test}{foreach $opernand in $opernands} {$opernand}{ifempty}Hello world{/foreach}{/template}")
+                                   "{template test}{foreach $opernand in $opernands}{sp}{$opernand}{ifempty}Hello world{/foreach}{/template}")
                  (list (template-call "TEST"
                                       '(:opernands ("alpha" "beta" "gamma")))
                        (template-call "TEST"
@@ -389,29 +389,29 @@ Hello world{/template}")
 
 (addtest (common-lisp-backend-test)
   foreach-4
-  (ensure-same "alpha + beta + gamma"
+  (ensure-same "alpha+beta+gamma"
                (progn
                  (compile-template :common-lisp-backend
-                                   "{template test}{foreach $opernand in $opernands}{if not isFirst($opernand)} + {/if}{$opernand}{/foreach}{/template}")
+                                   "{template test}{foreach $opernand in $opernands}{if not isFirst($opernand)}+{/if}{$opernand}{/foreach}{/template}")
                  (template-call "TEST"
                                 '(:opernands ("alpha" "beta" "gamma"))))))
 
 (addtest (common-lisp-backend-test)
   foreach-5
-  (ensure-same "alpha + beta + gamma"
+  (ensure-same "alpha+beta+gamma"
                (progn
                  (compile-template :common-lisp-backend
-                                   "{template test}{foreach $opernand in $opernands}{$opernand}{if not isLast($opernand)} + {/if}{/foreach}{/template}")
+                                   "{template test}{foreach $opernand in $opernands}{$opernand}{if not isLast($opernand)}+{/if}{/foreach}{/template}")
                  (template-call "TEST"
                                 '(:opernands ("alpha" "beta" "gamma"))))))
 ;;;; for
 
 (addtest (common-lisp-backend-test)
   for-1
-  (ensure-same " 0 1 2 3 4"
+  (ensure-same "01234"
                (progn
                  (compile-template :common-lisp-backend
-                                   "{template test}{for $i in range(5)} {$i}{/for}{/template}")
+                                   "{template test}{for $i in range(5)}{$i}{/for}{/template}")
                  (template-call "TEST"))))
 
 (addtest (common-lisp-backend-test)

@@ -6,15 +6,25 @@
 ;;;; Author: Moskvitin Andrey <archimag@gmail.com>
 
 (defsystem closure-template
-  :depends-on (#:babel #:parse-number #:esrap #:iterate #:parenscript #:closer-mop)
-  :components ((:module "src"
-                        :components ((:file "packages")
-                                     (:file "parser" :depends-on ("packages"))
-                                     (:file "translate" :depends-on ("parser"))
-                                     (:file "escape" :depends-on ("packages"))
-                                     (:file "common-lisp-backend" :depends-on ("escape" "translate"))
-                                     (:file "javascript-backend" :depends-on ("translate"))
-                                     (:file "standard-templates" :depends-on ("common-lisp-backend"))))))
+  :depends-on (#:babel #:parse-number #:esrap #:iterate #:parenscript #:closer-mop #:split-sequence)
+  :pathname "src/"
+  :serial t
+  :components ((:module "parser"
+                        :pathname "parser/"
+                        :serial t
+                        :components ((:file "defpackage")
+                                     (:file "command")
+                                     (:file "expression")))
+               (:file "defpackage")
+               (:module "common-lisp-backend"
+                        :pathname ""
+                        :serial t
+                        :components ((:file "escape")
+                                     (:file "common-lisp-backend")))
+               (:file "standard-templates")
+               (:module "javascript-backend"
+                        :pathname ""
+                        :components ((:file "javascript-backend")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system 'closure-template))))
   (operate 'load-op 'closure-template)
@@ -22,7 +32,8 @@
 
 (defsystem closure-template-test
   :depends-on (#:closure-template #:lift)
-  :components ((:module "t"
-                        :components ((:file "suite")
-                                     (:file "parser" :depends-on ("suite"))
-                                     (:file "common-lisp-backend" :depends-on ("suite"))))))
+  :pathname "t/"
+  :serial t
+  :components ((:file "suite")
+               (:file "parser")
+               (:file "common-lisp-backend")))

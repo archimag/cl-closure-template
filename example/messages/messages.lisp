@@ -25,14 +25,19 @@
 ;;; params
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defparameter *basedir*
+  (make-pathname :directory
+                 (butlast
+                  (pathname-directory
+                   (asdf:component-pathname (asdf:find-system '#:closure-template))))))
+
 (defparameter *dir* 
-  (merge-pathnames "example/messages/"
-                   (asdf:component-pathname (asdf:find-system '#:closure-template)))
+  (merge-pathnames "example/messages/" *basedir*)
   "Messages directory")
 
 (defparameter *jquery-dir*
   (merge-pathnames "example/jquery/"
-                   (asdf:component-pathname (asdf:find-system '#:closure-template)))
+                   *basedir*)
   "JQuery directory")
 
 (defparameter *template-path* (merge-pathnames "messages.tmpl" *dir*)

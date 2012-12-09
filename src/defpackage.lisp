@@ -5,34 +5,9 @@
 ;;;;
 ;;;; Author: Moskvitin Andrey <archimag@gmail.com>
 
-(defpackage #:closure-template.parser
-  (:use #:cl #:iter #:esrap)
-  (:export #:parse-template
-           #:parse-expression
-           #:closure-template-parse
-
-           #:not-equal
-           #:lispify-name
-           #:lispify-string
-
-           #:template-name
-           
-           #:foreach
-           #:call
-           #:param
-           #:literal
-           #:for-tag
-           #:switch-tag
-           #:namespace
-           #:with
-           #:if-tag
-           #:template
-           #:print-tag
-           #:comment))
-
 (defpackage #:closure-template
-  (:use #:cl #:iter #:alexandria)
-  (:import-from #:closure-template.parser #:parse-template  #:parse-expression #:not-equal #:lispify-string)
+  (:use #:cl #:iter #:alexandria #:closure-template.parser)
+  ;;(:import-from #:closure-template.parser #:parse-template  #:parse-expression #:not-equal #:lispify-string)  
   (:export #:parse-template
            #:parse-expression
            #:translate-template

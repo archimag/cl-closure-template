@@ -7,6 +7,8 @@
 
 (in-package #:closure-template)
 
+(defvar *autoescape* t)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; ttable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -93,19 +95,19 @@
 ;;; expression handler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun +/closure-template (arg1 arg2)
+(defun %+ (arg1 arg2)
   (if (or (stringp arg1)
           (stringp arg2))
       (format nil "~A~A" arg1 arg2)
       (+ arg1 arg2)))
 
-(defun round/closure-template (number &optional digits-after-point)
+(defun %round (number &optional digits-after-point)
   (if digits-after-point
       (let ((factor (expt 10.0 digits-after-point)))
         (/ (round (* number factor)) factor))
       (round number)))
 
-(defun != (arg1 arg2)
+(defun %!= (arg1 arg2)
   (not (equal arg1 arg2)))
 
 (defgeneric %same-name (s1 s2)
@@ -157,33 +159,79 @@
                      (%same-name name key))
             (return (slot-value obj name))))))
 
-(defun make-dot-handler (hash key)
-  (named-lambda dot-handler (env)
-    (fetch-property (funcall hash env) (funcall key env))))
+(defgeneric make-expression-handler (expr)
+  (:documentation "Make expression handler")
+  (:method (expr)
+    (constantly expr)))
 
-(defun make-variable-handler (varkey)
+;; variable
+
+(defmethod make-expression-handler ((var closure-template.parser:var))
   (named-lambda variable-handler (env)
-    (fetch-property env varkey)))
+    (fetch-property env (closure-template.parser:var-name var))))
 
-(defun make-boolean-expression-handler (expr)
-  (let ((expr (make-expression-handler expr)))
-    (named-lambda boolean-handler (env)
-      (%nonblank (funcall expr env)))))
+;; dotref
 
-(defun make-if-function-handler (condition success fail)
-  (let ((condition-expr (make-boolean-expression-handler condition))
-        (success-expr (make-expression-handler success))
-        (fail-expr (make-expression-handler fail)))
-    (named-lambda if-function-handler (env)
-      (if (funcall condition-expr env)
-          (funcall success-expr env)
-          (funcall fail-expr env)))))
+(defmethod make-expression-handler ((dotref closure-template.parser:dotref))
+  (let ((hash (make-expression-handler (closure-template.parser:ref-expr dotref)))
+        (key (make-expression-handler (closure-template.parser:dotref-name dotref))))
+    (named-lambda dot-handler (env)
+      (fetch-property (funcall hash env)
+                      (funcall key env)))))
 
-(defun make-simple-function-hadler (function args)
-  (named-lambda function-handler (env)
-    (apply function
-           (iter (for arg in args)
-                 (collect (funcall arg env))))))
+;; arref
+
+(defmethod make-expression-handler ((arref closure-template.parser:arref))
+  (let ((arr (make-expression-handler (closure-template.parser:ref-expr arref)))
+        (position (make-expression-handler (closure-template.parser:arref-position arref))))
+    (named-lambda arref-handler (env)
+      (elt (funcall arr env)
+           (funcall position env)))))
+
+;; fcall
+
+(defvar *user-functions* nil)
+
+(defun find-user-function (name)
+  (cdr (assoc name
+              *user-functions*
+              :test #'%same-name)))
+
+(defun make-function-handler (function args)
+  (let ((hargs (mapcar #'make-expression-handler args)))
+    (named-lambda function-handler (env)
+      (apply function
+             (iter (for arg in hargs)
+                   (collect (funcall arg env)))))))
+
+(defmethod make-expression-handler ((fcall closure-template.parser:fcall))
+  (let ((name (closure-template.parser:fcall-name fcall))
+        (args (closure-template.parser:fcall-args fcall)))
+    (case name
+      ((:is-first :is-last :index)
+       (make-foreach-function-handler name
+                                      (var-name (car args))))
+      (:round
+       (make-function-handler #'%round args))
+      (:random-int (make-function-handler #'random args))
+      (otherwise
+       (make-function-handler (or (and (find (symbol-name name)
+                                             closure-template.parser::*possible-functions*
+                                             :key 'lispify-string
+                                             :test #'string=)
+                                       (find-symbol (symbol-name name)
+                                                    '#:closure-template))
+                                  (find-user-function name)
+                                  (error "Bad function ~A" name))
+                              args)))))
+
+;; operator
+
+(defun make-if-operator-handler (condition success fail)
+  (named-lambda if-operator-handler (env)
+    (if (%nonblank (funcall condition env))
+        (funcall success env)
+        (funcall fail env))))
 
 (defun make-or-handler (args)
   (let ((a (first args))
@@ -203,70 +251,25 @@
   (named-lambda not-handler (env)
     (not (%nonblank (funcall expr env)))))
 
-(defvar *user-functions* nil)
-
-(defun find-user-function (name)
-  (cdr (assoc name
-              *user-functions*
-              :test #'%same-name)))
-
-(defun make-function-handler (symbol args)
-  (case symbol
-    (getf
-     (make-dot-handler (first args) (second args)))
-    (elt
-     (make-simple-function-hadler (symbol-function symbol) args))
-    (+
-     (make-simple-function-hadler #'+/closure-template args))
-
-    (or
-     (make-or-handler args))
-    (and
-     (make-and-handler args))
-    (not
-     (make-not-handler (first args)))
-
-    (:round
-     (make-simple-function-hadler #'round/closure-template args))
-
-    (:not-equal
-     (make-simple-function-hadler (named-lambda not-equal (x y)
-                                    (not (equal x y)))
-                                  args))
-
-    (:random-int
-     (make-simple-function-hadler #'random args))
-
-    (otherwise
-     (make-simple-function-hadler (or (and (find (symbol-name symbol)
-                                                 closure-template.parser::*possible-functions*
-                                                 :key 'lispify-string
-                                                 :test #'string=)
-                                           (find-symbol (symbol-name symbol)
-                                                        '#:closure-template))
-                                      (find symbol closure-template.parser::*infix-ops-priority*)
-                                      (find-user-function symbol)
-                                      (error "Bad function ~A" symbol))
-                                  args))))
-
-(defun make-expression-handler (expr)
-  (cond
-    ((and (consp expr) (symbolp (car expr)))
-     (case (car expr)
-       (:variable
-        (make-variable-handler (second expr)))
-       ((:is-first :is-last :index)
-        (make-foreach-function-handler (car expr) (second (second expr))))
-       (if
-        (make-if-function-handler (first (cdr expr))
-                                  (second (cdr expr))
-                                  (third (cdr expr))))
-       (otherwise
-        (make-function-handler (car expr)
-                               (mapcar #'make-expression-handler (cdr expr))))))
-    ((atom expr)
-     (constantly expr))
-    (t (error "Bad expression ~A" expr))))
+(defmethod make-expression-handler ((obj closure-template.parser:operator))
+  (let ((op (closure-template.parser:op-name obj))
+        (args (mapcar #'make-expression-handler (closure-template.parser:op-args obj))))
+    (case op
+      (or  (make-or-handler args))
+      (and (make-and-handler args))
+      (not (make-not-handler (first args)))
+      (if  (make-if-operator-handler (first args)
+                                     (second args)
+                                     (third args)))
+      (otherwise
+       (when (eql op '+)
+         (setf op #'%+))
+       (when (eql op '!=)
+         (setf op #'%!=))
+       (named-lambda operator-handler (env)
+         (apply op
+                (iter (for arg in args)
+                      (collect (funcall arg env)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; template command handler
@@ -285,52 +288,36 @@
       (iter (for command in commands)
             (funcall command env out)))))
 
-(defun make-command-handler (cmd)
-  (cond
-    ((stringp cmd)
-     (named-lambda simple-template-string-handler (env out)
-       (declare (ignore env))
-       (write-template-atom cmd out)))
-    ((consp cmd)
-     (case (car cmd)
-       (closure-template.parser:print-tag
-        (make-print-command-handler cmd))
-       (closure-template.parser:literal
-        (make-literal-command-handler cmd))
-       (closure-template.parser:if-tag
-        (make-if-command-handler cmd))
-       (closure-template.parser:switch-tag
-        (make-switch-command-handler cmd))
-       (closure-template.parser:foreach
-        (make-foreach-command-handler cmd))
-       (closure-template.parser:for-tag
-        (make-for-command-handler cmd))
-       (closure-template.parser:with
-        (make-with-command-handler cmd))
-       (closure-template.parser:call
-        (make-call-command-hadler cmd))
-       (closure-template.parser:comment nil)))))
+(defgeneric make-command-handler (cmd)
+  (:method (cmd)
+    (constantly cmd)))
+
+;;;; simple string
+
+(defmethod make-command-handler ((cmd string))
+  (named-lambda simple-template-string-handler (env out)
+    (declare (ignore env))
+    (write-template-atom cmd out)))
 
 ;;;; literal
 
-(defun make-literal-command-handler (cmd)
-  (assert (eq 'closure-template.parser:literal (car cmd)))
-  (let ((text (second cmd)))
+(defmethod make-command-handler ((cmd literal))
+  (let ((text (literal-content cmd)))
     (named-lambda literal-command-handler (env out)
       (declare (ignore env))
       (write-template-atom text out))))
 
 ;;;; print
 
-(defun make-print-command-handler (cmd)
-  (assert (eq 'closure-template.parser:print-tag (car cmd)))
-  (let ((expr (make-expression-handler (second cmd)))
-        (escape-mode (cond
-                       ((getf (cddr cmd) :no-autoescape) :no-autoescape)
-                       ((getf (cddr cmd) :id) :id)
-                       ((getf (cddr cmd) :escape-html) :escape-html)
-                       ((getf (cddr cmd) :escape-uri) :escape-uri)
-                       ((getf (cddr cmd) :escape-js) :escape-js))))
+(defmethod make-command-handler ((cmd closure-template.parser:print-command))
+  (let ((expr (make-expression-handler (closure-template.parser:print-expression cmd)))
+        (escape-mode (let ((props (closure-template.parser:print-directives cmd)))
+                       (cond
+                         ((getf props :no-autoescape) :no-autoescape)
+                         ((getf props :id) :id)
+                         ((getf props :escape-html) :escape-html)
+                         ((getf props :escape-uri) :escape-uri)
+                         ((getf props :escape-js) :escape-js)))))
     (case (or escape-mode
               (if *autoescape* :escape-html :no-autoescape))
       (:no-autoescape (named-lambda no-autoescape-print (env out)
@@ -344,12 +331,16 @@
       (:escape-html (named-lambda escape-html-print (env out)
                       (write-template-atom (escape-html (funcall expr env))
                                            out))))))
-
+    
 ;;;; if
 
-(defun make-if-command-handler (cmd)
-  (assert (eq 'closure-template.parser:if-tag (car cmd)))
-  (let ((clauses (iter (for clause in (cdr cmd))
+(defun make-boolean-expression-handler (expr)
+  (let ((expr (make-expression-handler expr)))
+    (named-lambda boolean-handler (env)
+      (%nonblank (funcall expr env)))))
+
+(defmethod make-command-handler ((cmd closure-template.parser:if-command))
+  (let ((clauses (iter (for clause in (closure-template.parser:if-command-options cmd))
                        (collect (cons (make-boolean-expression-handler (first clause))
                                       (make-code-block-handler (second clause)))))))
     (named-lambda if-command-handler (env out)
@@ -357,11 +348,30 @@
             (when (funcall (car clause) env)
               (funcall (cdr clause) env out)
               (finish))))))
-
+  
 ;;;; switch
 
+(defmethod make-command-handler ((cmd switch-command))
+  (let ((switch-expr (make-expression-handler (switch-expression cmd)))
+        (default-handler (make-code-block-handler (switch-default cmd)))
+        (clauses (iter (for clause in (switch-cases cmd))
+                       (collect (cons (let ((conditions (mapcar #'make-expression-handler (first clause))))
+                                        (named-lambda case-condition-handler (env value)
+                                          (iter (for item in conditions)
+                                                (finding T such-that (equal value
+                                                                            (funcall item env))))))
+                                      (make-code-block-handler (second clause)))))))
+    (named-lambda switch-command-handler (env out)
+      (let ((value (funcall switch-expr env)))
+        (funcall (or (iter (for clause in clauses)
+                           (finding (cdr clause)
+                                    such-that (funcall (car clause) env value)))
+                     default-handler)
+                 env
+                 out)))))
+
 (defun make-switch-command-handler (cmd)
-  (assert (eq 'closure-template.parser:switch-tag (car cmd)))
+  (assert (eq 'closure-template.parser:switch-command (car cmd)))
   (let ((switch-expr (make-expression-handler (second cmd)))
         (default-handler (make-code-block-handler (third cmd)))
         (clauses (iter (for clause in (cdddr cmd))
@@ -397,17 +407,24 @@
 
 (defun make-foreach-function-handler (symbol varname)
   (case symbol
-    (:index #'(lambda (env) (declare (ignore env)) (index varname)))
-    (:is-first #'(lambda (env) (declare (ignore env)) (is-first varname)))
-    (:is-last #'(lambda (env) (declare (ignore env)) (is-last varname)))))
+    (:index
+     (named-lambda index-foreach-handler (env)
+       (declare (ignore env))
+       (index varname)))
+    (:is-first
+     (named-lambda is-first-foreach-handler (env)
+       (declare (ignore env))
+       (is-first varname)))
+    (:is-last
+     (named-lambda is-last-foreach-handler (env)
+       (declare (ignore env))
+       (is-last varname)))))
 
-
-(defun make-foreach-command-handler (cmd)
-  (assert (eq 'closure-template.parser:foreach (car cmd)))
-  (let ((varname (second (first (second cmd))))
-        (expr (make-expression-handler (second (second cmd))))
-        (body (make-code-block-handler (third cmd)))
-        (empty-handler (make-code-block-handler (fourth cmd))))
+(defmethod make-command-handler ((cmd foreach))
+  (let ((varname (var-name (foreach-varname cmd)))
+        (expr (make-expression-handler (foreach-expression cmd)))
+        (body (make-code-block-handler (foreach-code-block cmd)))
+        (empty-handler (make-code-block-handler (foreach-if-empty-code cmd))))
     (named-lambda foreach-command-handler (env out)
       (let ((seq (funcall expr env)))
         (cond
@@ -423,14 +440,13 @@
                                out)
                       (incf (first varinfo)))
                     seq))))))))
-
+  
 ;;;; for
 
-(defun make-for-command-handler (cmd)
-  (assert (eq 'closure-template.parser:for-tag (car cmd)))
-  (let ((varname (second (first (second cmd))))
-        (range (mapcar #'make-expression-handler (cdr (second (second cmd)))))
-        (body (make-code-block-handler (cddr cmd))))
+(defmethod make-command-handler ((cmd for-command))
+  (let ((varname (var-name (for-varname cmd)))
+        (range (mapcar #'make-expression-handler (cdr (for-range cmd))))
+        (body (make-code-block-handler (for-code-block cmd))))
     (named-lambda for-command-handler (env out)
       (let ((start (if (second range)
                        (funcall (first range) env)
@@ -448,13 +464,12 @@
 
 ;;;; with
 
-(defun make-with-command-handler (cmd)
-  (assert (eq 'closure-template.parser:with (car cmd)))
-  (let ((vars (iter (for item in (second cmd))
+(defmethod make-command-handler ((cmd with))
+  (let ((vars (iter (for item in (with-vars cmd))
                     (collect
-                        (cons (second (first item))
+                        (cons (var-name (first item))
                               (make-expression-handler (second item))))))
-        (body (make-code-block-handler (third cmd))))
+        (body (make-code-block-handler (with-body cmd))))
     (named-lambda with-command-handler (env out)
       (funcall body
                (append (iter (for item in vars)
@@ -472,24 +487,21 @@
     (otherwise (make-expression-handler data))))
 
 (defun make-param-handler (param)
-  (if (third param)
-      (make-expression-handler (third param))
-      (let ((body (make-code-block-handler (cdddr param))))
+  (if (second param)
+      (make-expression-handler (second param))
+      (let ((body (make-code-block-handler (cddr param))))
         (named-lambda full-param-handler (env)
           (let ((*print-pretty* nil))
             (with-output-to-string (out)
               (funcall body env out)))))))
 
-(defun make-call-command-hadler (cmd)
-  (destructuring-bind (name data &rest params) (cdr cmd)
-    (let ((data-expr (make-call-data-handler data))
-          (args (iter (for param in params)
-                      (collect
-                          (cons (second (second param))
-                                (make-param-handler param)))))
-          (name-expr (if (stringp name)
-                         (constantly name)
-                         (make-expression-handler name))))
+(defmethod make-command-handler ((cmd call))
+  (let ((name-expr (make-expression-handler (call-name cmd)))
+        (data-expr (make-call-data-handler (call-data cmd)))
+        (args (iter (for param in (call-params cmd))
+                    (collect
+                        (cons (var-name (first param))
+                              (make-param-handler param))))))
       (named-lambda call-command-handler (env out)
         (ttable-call-template *ttable*
                               (lispify-string (funcall name-expr env))
@@ -497,7 +509,7 @@
                                             (collect (car arg))
                                             (collect (funcall (cdr arg) env)))
                                       (funcall data-expr env))
-                              out)))))
+                              out))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; namespace
@@ -505,28 +517,29 @@
 
 (defvar *template-data* nil)
 
-(defun has-data (env)
-  (declare (ignore env))
-  (if *template-data* t))
+(defun has-data ()
+  (and *template-data* t))
 
-(defun compile-namespace (data)
-  (let* ((package (if (second data)
-                      (ensure-ttable-package (string-upcase (second data)))
+(defun compile-namespace (obj)
+  (let* ((namespace-name (closure-template.parser:namespace-name obj))
+         (package (if namespace-name
+                      (ensure-ttable-package (string-upcase namespace-name))
                       *default-closure-template-package*))
          (ttable (package-ttable package)))
-    (iter (for tmpl in (cddr data))
-          (destructuring-bind (name &key (autoescape t)) (second tmpl)
-            (let ((handler (let ((*autoescape*  autoescape))
-                             (make-code-block-handler (cddr tmpl)))))
-              (ttable-register-template ttable
-                                        (lispify-string name)
-                                        (named-lambda template-namespace-handler (env out)
-                                          (let ((*template-data* env))
-                                            (funcall handler env out)))
-                                        :supersede t))))
+    (iter (for tmpl in (closure-template.parser:namespace-templates obj))
+          (let* ((name (closure-template.parser:template-name tmpl))
+                 (autoescape (getf (closure-template.parser:template-properties tmpl) :autoescape t))
+                 (handler (let ((*autoescape*  autoescape))
+                            (make-code-block-handler (closure-template.parser:template-code-block tmpl)))))
+            (ttable-register-template ttable
+                                      (lispify-string name)
+                                      (named-lambda template-namespace-handler (env out)
+                                        (let ((*template-data* env))
+                                          (funcall handler env out)))
+                                      :supersede t)))
     (ttable-extend-package ttable package)
     package))
-
+                                      
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; compile template
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

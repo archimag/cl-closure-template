@@ -7,7 +7,7 @@
 
 (in-package #:closure-template)
 
-(defclass javascript-backend () ())
+(defparameter *symbol-counter* 1)
 
 (defvar *local-variables* nil)
 
@@ -23,257 +23,586 @@
 (defparameter *check-js-namespace* t
   "If true and JavaScript namespace not exists - create namespace")
 
-(defun js-string-to-symbol (str)
-  (make-symbol (coerce (iter (for ch in-string str)
-                             (when (upper-case-p ch)
-                               (collect #\-))
-                             (collect (char-upcase ch)))
-                       'string)))
+(defparameter *indent-level* 0)
 
-(defmethod backend-print ((backend javascript-backend) expr &optional directives)
-  (list (list'ps:@ *js-print-target* 'push)
-        (case (or (getf directives :escape-mode)
-                  (if *autoescape* :escape-html :no-autoescape))
-          (:no-autoescape expr)
-          (:id `(encode-u-r-i-component ,expr))
-          (:escape-uri `(encode-u-r-i ,expr))
-          (:escape-html `(let ((val ,expr))
-                           (if (= (ps:typeof val) "string")
-                               ((ps:@ ((ps:@ ((ps:@ ((ps:@ ((ps:@ val replace) (ps:regex "/&/g") "&amp;") replace) (ps:regex "/</g") "&lt;") replace) (ps:regex "/>/g") "&gt;") replace) (ps:regex "/\"/g") "&quot;") replace) (ps:regex "/'/g") "&#039;")
-                               val))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; helpers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmacro with-write-parenthesis ((out &optional (parenthesis "()")) &body body)
+  `(progn
+     (write-char (char ,parenthesis 0) ,out)
+     ,@body
+     (write-char (char ,parenthesis 1) ,out)))
 
-(defmethod translate-expression ((backend javascript-backend) expr)
-  (if (and (consp expr)
-           (symbolp (car expr)))
-      (let ((key (car expr)))
-        (case key
-          (rem (cons 'ps:% (translate-expression backend
-                                                 (cdr expr))))
-          (equal (translate-expression backend
-                                       (cons '= (cdr expr))))
-          (not-equal (list 'ps:!=
-                           (translate-expression backend (second expr))
-                           (translate-expression backend (third expr))))
-          (:round (translate-expression backend
-                                        (cons 'round-closure-template
-                                              (cdr expr))))
-          (:variable (if (find (second expr) *local-variables* :test #'string=)
-                         (make-symbol (symbol-name (second expr)))
-                         `(ps:@ $data$ ,(make-symbol (string-upcase (second expr))))))
-          (getf `(,@(let ((tr (translate-expression backend
-						    (second expr))))
-			 (cond ((symbolp tr) (list 'ps:@ tr))
-			       ((and (listp tr)
-			 	     (eql (car tr) 'ps:@))
-			 	tr)
-			       (t (list* 'ps:@ tr))))
-		    ,(make-symbol (string-upcase (third expr)))))
-          (otherwise (cons (or (find-symbol (symbol-name key)
-                                            '#:closure-template)
-                               (error "Bad keyword ~A" key))
-                           (iter (for item in (cdr expr))
-                                 (when item
-                                   (collect (translate-expression backend item))))))))
-      expr))
+(defmacro with-local-var ((name) &body body)
+  `(let ((*local-variables* (cons ,name *local-variables*)))
+     ,@body))
 
-(defun split-namespace-name (str)
-  (destructuring-bind (first rest)
-      (closure-template.parser:closure-template-parse '(and closure-template.parser:template-name
-                                                        (* (and #\. closure-template.parser:template-name)))
-                                                      str)
-    (cons first
-          (mapcar #'second rest))))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter +json-lisp-escaped-chars+
+    '((#\" . #\")
+      (#\\ . #\\)
+      (#\/ . #\/)
+      (#\b . #\Backspace)
+      (#\f . #\)
+      (#\n . #\Newline)
+      (#\r . #\Return)
+      (#\t . #\Tab)
+      (#\u . (4 . 16)))))
 
-(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:namespace)) args)
-  (let* ((*js-namespace* (if (car args)
-                          (cons 'ps:@
-                                (mapcar #'js-string-to-symbol
-                                        (split-namespace-name (car args))))
-                          *default-js-namespace*)))
-    (concatenate 'list
-                 (if *check-js-namespace*
-                     (nreverse (iter (for i from (length *js-namespace*) downto 2 )
-                                     (collect (let ((part (subseq *js-namespace* 0 i)))
-                                                (if (cddr part)
-                                                    `(when (= (ps:typeof ,part) "undefined")
-                                                       (setf ,part (ps:create)))
-                                                    `(when (= (ps:typeof ,part) "undefined")
-                                                       (setf ,part (ps:create)))))))))
-                 (iter (for fun in (cdr args))
-                       (collect (translate-item backend
-                                                fun))))))
+(defun %js (text)
+  (with-output-to-string (stream)
+    (iter (for ch in-string text)
+          (for code = (char-code ch))
+          (let ((special (car (rassoc ch +json-lisp-escaped-chars+))))
+            (cond
+              (special
+               (write-char #\\ stream)
+               (write-char special stream))
+              ((< #x1f code #x7f)
+               (write-char ch stream))
+              (t
+               (let ((esc-width-radix '#.(rassoc-if #'consp +json-lisp-escaped-chars+)))
+                 (destructuring-bind (esc . (width . radix)) esc-width-radix
+                   (format stream "\\~C~V,V,'0R" esc radix width code)))))))))
 
-(defun js-loop-variable-counter-symbol (loop-var)
-  (make-symbol (format nil "~A-COUNTER" loop-var)))
+(defmacro with-increase-indent (&body body)
+  `(let ((*indent-level* (1+ *indent-level*)))
+     ,@body))
 
-(defun js-loop-sequence-symbol (loop-var)
-  (make-symbol (format nil "~A-SEQ" loop-var)))
+(defun write-indent (out)
+  (dotimes (i (* 4 *indent-level*))
+    (write-char #\Space out)))
+               
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; expressions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:template)) args)
-  (let* ((body (let ((*autoescape* (if (find :autoescape (cdar args))
-                                       (getf (cdar args) :autoescape)
-                                       *autoescape*)))
-                 (translate-item backend
-                                 (cdr args)))))
-    `(setf (,@*js-namespace* ,(js-string-to-symbol (caar args)))
-         (lambda ($$data$$ $$template-output$$)
-           (defvar $data$ (or $$data$$ (ps:create)))
-           (defvar $template-output$
-             (or $$template-output$$ (array)))
-           (macrolet ((has-data () '(if $$data$$ t))
-                      (index (var) `,(js-loop-variable-counter-symbol var))
-                      (is-first (var) `(= 0 (index ,var)))
-                      (is-last (var) `(= (1- (ps:@ ,(js-loop-sequence-symbol var) length)) (index ,var)))
-                      (round-closure-template (number &optional digits-after-point)
-                        `(if ,digits-after-point
-                             (let ((factor (expt 10.0 ,digits-after-point)))
-                               (/ (round (* ,number factor)) factor))
-                             (round ,number))))             
-             ,body)
-           (unless $$template-output$$
-             (funcall (ps:@ $template-output$ join) ""))))))
+(defgeneric write-expression (expr out)
+  (:documentation "Write expression as JavaScript")
+  (:method ((expr string) out)
+    (format out "~S" (%js expr)))
+  (:method ((expr integer) out)
+    (format out "~d" expr))
+  (:method ((expr real) out)
+    (format out "~f" expr)))
 
-(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:with)) args)
-  (let ((*local-variables* *local-variables*))
-    `(let ,(iter (for (var expr) in (first args))
-                 (push (second var) *local-variables*)
-                 (collect (list (translate-expression backend var)
-                                (translate-expression backend expr))))
-       ,(translate-item backend (second args)))))
+;;;; dotref
 
-(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:literal)) args)
-  (list (list'ps:@ *js-print-target* 'push)
-        (car args)))
-        
-(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:foreach)) args)
-  (let* ((loop-var (make-symbol (string-upcase (second (first (first args))))))
-         (*local-variables* (cons loop-var
-                                  *local-variables*))
-         (seq-expr (translate-expression backend (second (first args))))
-         (seqvar (js-loop-sequence-symbol loop-var))
-         (counter (js-loop-variable-counter-symbol loop-var)))
-    `(let ((,seqvar ,seq-expr))
-       (if ,seqvar
-           (progn
-             (defvar ,counter 0)
-             (dolist (,loop-var ,seqvar)
-               ,(translate-item backend
-                                (second args))
-               (incf ,counter)))
-           ,(if (third args)
-                (translate-item backend
-                                (third args)))))))
+(defmethod write-expression ((expr dotref) out)
+  (write-expression (ref-expr expr) out)
+  (let ((name (dotref-jsname expr)))
+    (cond
+      ((stringp name)
+       (with-write-parenthesis (out "[]")
+         (write-expression name out)))
+      (t
+       (format out ".~A" name)))))
 
-(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:if-tag)) args)
+;;;; aref
+
+(defmethod write-expression ((expr arref) out)
+  (write-expression (ref-expr expr) out)
+  (with-write-parenthesis (out "[]")
+    (write-expression (arref-position expr) out)))
+
+;;;; variable
+
+(defmethod write-expression ((expr var) out)
+  (let ((name (var-jsname expr)))
+    (unless (member name  *local-variables* :test #'string=)
+      (write-string "$env$." out))
+    (write-string name out)))
+
+;;;; fcall
+
+(defmethod write-expression ((expr fcall) out)
+  (let ((name (fcall-jsname expr))
+        (args (fcall-args expr)))
+    (flet ((write-simple-funcall (fun-name)
+             (write-string fun-name out)
+             (with-write-parenthesis (out)
+               (write-expression (first args) out)
+               (iter (for arg in (cdr args))
+                     (write-string ", " out)
+                     (write-expression arg out)))))
+      (cond
+        ((string= name "hasData")
+         (format out "($env$ && !~A.$isEmpty$($env$))" *js-namespace*))
+        ((string= name "index")
+         (format out "($counter_~A$ + 1)" (var-jsname (first args))))
+        ((string= name "isFirst")
+         (format out "($counter_~A$ == 0)" (var-jsname (first args))))
+        ((string= name "isLast")
+         (format out
+                 "($counter_~A$ == ($sequence_~A$.length - 1))"
+                 (var-jsname (first args))
+                 (var-jsname (first args))))
+        ((string= name "randomInt")
+         (write-string "Math.floor" out)
+         (with-write-parenthesis (out)
+           (write-string "Math.random() * " out)
+           (write-expression (first args) out)))
+        ((string= name "round")
+         (write-simple-funcall (format nil "~A.$round$" *js-namespace*)))
+        (t
+         (write-simple-funcall (format nil "Math.~A" name)))))))
+
+;;;; operator
+
+(defmethod write-expression ((expr operator) out)
+  (let ((name (op-name expr))
+        (args (op-args expr)))
+    (case (length args)
+      (1
+       (case name
+         (-
+          (write-string "-" out)
+          (write-expression (first args) out))
+         (not
+          (write-string "!" out)
+          (write-expression (first args) out))))
+      (2
+       (with-write-parenthesis (out)
+         (write-expression (first args) out)
+         (write-string (case name
+                         (and " && ")
+                         (or " || ")
+                         (rem " % ")
+                         (equal " == ")
+                         (not-equal " != ")
+                         (otherwise (symbol-name name)))
+                       out)
+         (write-expression (second args) out)))
+      (3
+       (when (eql name 'if)
+         (with-write-parenthesis (out)
+           (write-expression (first args) out)
+           (write-string " ? " out)
+           (write-expression (second args) out)
+           (write-string " : " out)
+           (write-expression (third args) out)))))))
+                        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; commands
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defgeneric write-command (cmd out)
+  (:method ((cmd string) out)
+    (write-indent out)
+    (write-string "$result$.push" out)
+    (with-write-parenthesis (out)
+      (with-write-parenthesis (out "\"\"")
+        (write-string (%js cmd) out)))
+    (write-line ";" out))
+  (:method ((cmd list) out)
+    (iter (for item in cmd)
+          (write-command item out))))
+
+;;;; comment
+
+(defmethod write-command ((cmd comment) out)
+  ;; no comments
+  )
+
+;;;; literal
+
+(defmethod write-command ((cmd literal) out)
+  (write-indent out)
+  (format out "$result$.push(\"~A\");~&" (%js (literal-content cmd))))
+
+;;;; print
+
+(defmethod write-command ((cmd print-command) out)
+  (write-indent out)
+  (write-string "$result$.push" out)
+  (let ((expr (print-expression cmd))
+        (directives (print-directives cmd)))
+    (with-write-parenthesis (out)
+      (cond
+        ((getf directives :id)
+         (write-string "encodeURIComponent" out)
+         (with-write-parenthesis (out)
+           (write-expression expr out)))
+        ((getf directives :escape-uri)
+         (write-string "encodeURI" out)
+         (with-write-parenthesis (out)
+           (write-expression expr out)))
+        ((or (getf directives :escape-html)
+             (and *autoescape*
+                  (not (getf directives :no-autoescape))))
+         (format out "~A.$escapeHTML$" *js-namespace*)
+         (with-write-parenthesis (out)
+           (write-expression expr out)))
+        (t
+         (write-expression expr out))))
+    (write-line ";" out)))
+
+;;;; if
+
+(defmethod write-command ((cmd if-command) out)
+  (let ((first t))
+    (iter (for option in (if-command-options cmd))
+          (cond
+            (first
+             (setf first nil)
+             (write-indent out)
+             (write-string "if " out)
+             (with-write-parenthesis (out)
+               (write-expression (first option) out)))
+            ((eql (first option) t)
+             (write-indent out)
+             (write-string "else" out))
+            (t
+             (write-indent out)
+             (write-string "else if " out)
+             (with-write-parenthesis (out)
+               (write-expression (first option) out))))
+          (write-line " {" out)
+          (with-increase-indent 
+            (write-command (second option) out))
+          (write-indent out)
+          (write-line "}" out))))
+
+;;;; switch
+
+(defmethod write-command ((cmd switch-command) out)
+  (write-indent out)
+  (write-string "switch " out)
+  (with-write-parenthesis (out)
+    (write-expression (switch-expression cmd) out))
+  (write-line " {" out)
+
+  (iter (for case in (switch-cases cmd))
+        (iter (for item in (first case))
+              (with-increase-indent
+                (write-indent out)
+                (write-string "case " out)
+                (write-expression item out)
+                (write-line ":" out)
+
+                (with-increase-indent
+                  (write-command (second case) out)
+                  (write-indent out)
+                  (write-line "break;" out)))))
+
+  (when (switch-default cmd)
+    (with-increase-indent
+      (write-indent out)
+      (write-line "default:" out)
+
+      (with-increase-indent
+        (write-command (switch-default cmd) out)
+        (write-indent out)
+        (write-line "break;"))))
+
+  (write-indent out)
+  (write-line "}" out))
+
+;;;; foreach
+
+(defmethod write-command ((cmd foreach) out)
+  (let* ((varname (var-jsname (foreach-varname cmd)))
+         (seqname (format nil "$sequence_~A$" varname))
+         (counter-name (format nil "$counter_~A$" varname)))
+    
+    (write-indent out)
+    (format out "var ~A = " seqname)
+    (write-expression (foreach-expression cmd) out)
+    (write-line ";" out)
+
+    (write-indent out)
+    (format out "if (~A) {~&" seqname)
+
+    (with-increase-indent
+      (write-indent out)
+      (format out
+              "for (var ~A = 0; ~A < ~A.length; ++~A) {~&"
+              counter-name
+              counter-name
+              seqname
+              counter-name)
+
+      (with-increase-indent
+        (write-indent out)
+        (format out "var ~A = ~A[~A];~&" varname seqname counter-name)
+
+        (with-local-var (varname)
+          (write-command (foreach-code-block cmd) out)))
+
+      (write-indent out)
+      (write-line "}" out))
+
+    (write-indent out)
+    (write-line "}" out)
+
+    (when (foreach-if-empty-code cmd)
+      (write-indent out)
+      (write-line "else " out)
+
+      (with-increase-indent
+        (write-command (foreach-if-empty-code cmd) out))
+
+      (write-indent out)
+      (write-line "}"))))
+
+;;;; for
+
+(defmethod write-command ((cmd for-command) out)
+  (let ((varname (var-jsname (for-varname cmd)))
+        (range (cdr (for-range cmd))))
+
+    (write-indent out)
+
+    (case (length range)
+      (1
+       (format out "for (var ~A = 0; ~A < " varname varname)
+       (write-expression (first range) out)
+       (format out "; ++~A) {~&" varname))
+      (2
+       (format out "for (var ~A = " varname)
+       (write-expression (first range) out)
+       (format out "; ~A < " varname)
+       (write-expression (second range) out)
+       (format out "; ++~A) {~&" varname))
+      (3
+       (format out "for (var ~A = " varname)
+       (write-expression (first range) out)
+       (format out "; ~A < " varname)
+       (write-expression (second range) out)
+       (format out "; ~A += " varname)
+       (write-expression (third range) out)
+       (write-line ") {" out)))
+
+    (with-increase-indent
+      (with-local-var (varname)
+        (write-command (for-code-block cmd) out)))
+
+    (write-indent out)
+    (write-line "}" out)))
+
+;;;; with
+
+(defmethod write-command ((cmd with) out)
+  (write-indent out)
+  (write-line "(function () {" out)
+
+  (with-increase-indent
+    (let ((*local-variables* *local-variables*))
+      (iter (for item in (with-vars cmd))
+            (for varname = (var-jsname (first item)))
+            (setf *local-variables*
+                  (cons varname *local-variables*))
+            (write-indent out)
+            (format out "var ~A = " varname)
+            (write-expression (second item) out)
+            (write-line ";" out))
+      (write-command (with-body cmd) out)))
+
+  (write-indent out)
+  (write-line "})();" out))
+
+;;;; call
+
+(defmethod write-command ((cmd call) out)
   (cond
-    ((= (length args) 1) `(when ,(translate-expression backend
-                                                       (first (first args)))
-                            ,(translate-item backend
-                                             (cdr (first args)))))
-    ((and (= (length args) 2)
-          (eql (first (second args)) t)) `(if ,(translate-expression backend
-                                                                     (first (first args)))
-                                              ,(translate-item backend
-                                                               (cdr (first args)))
-                                              ,(translate-item backend
-                                                               (cdr (second args)))))
-    (t (cons 'cond
-             (iter (for v in args)
-                   (collect (list (translate-expression backend
-                                                        (first v))
-                                  (translate-item backend
-                                                  (cdr v)))))))))
+    ((call-params cmd)
+     (write-call-with-params cmd out))
+    (t
+     (write-call-without-params cmd out))))
 
-(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:switch-tag)) args)
-  `(case ,(translate-expression backend (first args))
-     ,@(iter (for clause in (cddr args))
-             (collect (list (if (consp (first clause))
-                                (iter (for i in (first clause))
-                                      (collect (translate-expression backend i)))
-                                (first clause))
-                            (translate-item backend (cdr clause)))))
-     ,@(if (second args) (list (list t
-                                     (translate-item backend
-                                                     (second args)))))))
+(defun write-call-with-params (cmd out)
+  (incf *symbol-counter*)
+  (let ((new-env-name (format nil "$env_~A$" *symbol-counter*)))
+    
+    (let ((data (call-data cmd)))
+      (write-indent out)
+      (format out "var ~A = " new-env-name)
+      
+      (cond
+        ((eql data :all)
+         (format out "~A.$objectFromPrototype$($env$)" *js-namespace*))
+        ((eql data nil)
+         (write-string "{}" out))
+        (t
+         (format out "~A.$objectFromPrototype$" *js-namespace*)
+         (with-write-parenthesis (out)
+           (write-expression data out))))
+      
+      (write-line ";" out))
 
-(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:for-tag)) args)
-  (let* ((loop-var (intern (string-upcase (second (first (first args))))))
-         (*local-variables* (cons loop-var
-                                  *local-variables*))
-         (from-expr (translate-expression backend
-                                          (second (second (first args)))))
-         (below-expr (translate-expression backend
-                                           (third (second (first args)))))
-         (by-expr (translate-expression backend
-                                        (fourth (second (first args))))))
-    `(loop
-        for ,loop-var from ,(if below-expr from-expr 0) below ,(or below-expr from-expr) ,@(if by-expr (list 'by by-expr))
-        do ,(translate-item backend
-                            (cdr args)))))
+    (iter (for param in (call-params cmd))
+          (for param-name = (var-jsname (first param)))
+          
+          ;; short param
+          (when (second param) 
+            (write-indent out)
+            (format out "~A.~A = " new-env-name param-name)
+            (write-expression (second param) out)
+            (write-line ";" out))
+            
+          ;; full param
+          (when (third param) 
+            (incf *symbol-counter*)
 
+            (write-indent out)
+            (format out "~A.~A = function () {~&" new-env-name param-name)
 
-(defmethod translate-named-item ((backend javascript-backend) (item (eql 'closure-template.parser:call)) args)
-  (let ((fun-name `(,@*js-namespace* ,(if (consp (first args))
-                                          (translate-expression backend
-                                                                (first args))
-                                          (js-string-to-symbol (first args)))))
-        (data-param (cond
-                      ((eql (second args) :all) '$data$)
-                      ((second args) (translate-expression backend (second args)))))
-        (params (cddr args))
-        (_data_ (ps:ps-gensym)))
-    (if (not params)
-        (backend-print backend
-                       (if data-param
-                           (list fun-name data-param)
-                           (list fun-name))
-                       (list :escape-mode :no-autoescape))
-        (let ((call-expr `((defvar ,_data_ (ps:create)))))
-          (when data-param
-            (let ((lvar (gensym "$_")))
-              (push `(ps:for-in (,lvar ,data-param)
-                                (setf (aref ,_data_ ,lvar)
-                                      (aref ,data-param ,lvar)))
-                    call-expr)))
-          (iter (for param in params)
-                (let ((slotname `(ps:@ ,_data_ ,(make-symbol (symbol-name (second (second param)))))))
-                  (if (third param)
-                      (push `(setf ,slotname
-                                   ,(translate-expression backend
-                                                          (third param)))
-                            call-expr)
-                      (let ((*js-print-target* slotname))
-                        (push `(setf ,slotname (array))
-                              call-expr)
-                        (push (translate-item backend
-                                              (cdddr param))
-                              call-expr)
-                        (push `(setf ,slotname ((ps:@ ,slotname join) ""))
-                              call-expr)
-                        ))))
-          `(progn ,@(reverse call-expr)
-                  ,(list fun-name _data_ *js-print-target*))))))
+            (with-increase-indent
+              (write-indent out)
+              (write-line "var $result$ = [];" out)
+
+              (write-command (third param) out)
+
+              (write-indent out)
+              (write-line "return $result$.join('');" out))
+
+            (write-indent out)
+            (write-line "}();" out)))
+
+    (write-indent out)
+    (write-call-name cmd out)
+    (format out "(~A, $result$);~&" new-env-name)))
+
+(defun write-call-without-params (cmd out)
+  (write-indent out)
+  (write-call-name cmd out)
+  (with-write-parenthesis (out)
+    (let ((data (call-data cmd)))
+      (cond 
+        ((eql data :all)
+         (write-string "$env$" out))
+        ((eql data nil)
+         (write-string "{}" out))
+        (t
+         (write-expression (call-data cmd) out))))
+    (write-string ", $result$" out))
+  (write-line ";" out))
+
+(defun write-call-name (cmd out)
+  (cond
+    ((stringp (call-name cmd))
+     (format out "~A.~A" *js-namespace* (call-name cmd)))
+    (t
+     (write-string *js-namespace* out)
+     (with-write-parenthesis (out "[]")
+       (write-expression (call-name cmd) out)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; translate and compile template methods
+;; namespace/template
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod translate-template ((backend (eql :javascript-backend)) template)
-  (translate-template (make-instance 'javascript-backend)
-                      template))
+(defun write-template (tmpl out)
+  (format out
+          "~&~A.~A = function($env$, $target$) {~&"
+          *js-namespace*
+          (template-name tmpl))
+  
+  (let ((*indent-level* 1)
+        (*autoescape* (getf (template-properties tmpl) :autoescape t)))
+    (write-indent out)
+    (write-line "if (!$env$) { $env$ = {}; }" out)
+    (write-indent out)
+    (write-line "var $result$ = $target$ || [];" out)
+    (write-line "" out)
+
+    (write-command (template-code-block tmpl) out)
+
+    (write-line "" out)
+    (write-indent out)
+    (write-line "if (!$target$) return $result$.join('');" out)
+    (write-indent out)
+    (write-line "else return null;" out)
+    
+    (write-line "};" out)))
+
+(defun write-namespace (namespace out &aux (name (namespace-name namespace)))
+  (write-namespace-declaration name out)
+  (write-namespace-body name (namespace-templates namespace) out))
+
+(defun write-namespace-declaration (name out)
+  (iter (for pos first (position #\. name) then (position #\. name :start (1+ pos)))
+        (for short-name = (subseq name 0 pos))
+        (format out "if (typeof ~A === 'undefined') { ~A = {}; }~&" short-name short-name)
+        (while pos))
+  (macrolet ((write-function (funname (&optional (args "obj"))  &body body)
+               `(progn
+                  (write-line "" out)
+                  (format out "~A.~A = function (~A) {~&" name ,funname ,args)
+                  ,@body
+                  (write-line "};" out))))
+    ;; hasData
+    (write-function "$isEmpty$" ()
+      (write-line "    for (var prop in obj) if (obj.hasOwnProperty(prop)) return false;" out)
+      (write-line "    return true;" out))
+
+    ;; escapeHTML
+    (write-function "$escapeHTML$" ()
+      (write-string "    if (typeof obj == \'string\') return String(obj)" out)
+      (write-string ".split('&').join('&amp;')" out)
+      (write-string ".split( '<').join('&lt;')" out)
+      (write-string ".split('>').join('&gt;')" out)
+      (write-string ".split('\\\"').join('&quot;')" out)
+      (write-string ".split('\\'').join('&#039;')" out)
+      (write-line ";" out)
+      (write-line "    else return obj;" out))
+
+    ;; round
+    (write-function "$round$" ("number, ndigits")
+      (write-line "    if (ndigits) {" out)
+      (write-line "        var factor = Math.pow(10.0, ndigits);" out)
+      (write-line "        return Math.round(number * factor) / factor;" out)
+      (write-line "    }" out)
+      (write-line "    else return Math.round(number)" out))
+
+    ;; objectFromPrototype
+    (write-function "$objectFromPrototype$" ()
+      (write-line "    function C () {}" out)
+      (write-line "    C.prototype = obj;" out)
+      (write-line "    return new C;" out)))
+  (values))
+
+(defun write-namespace-body (name templates out)
+  (let ((*js-namespace* name))
+    (iter (for tmpl in templates)
+          (write-line "" out)
+          (write-template tmpl out))))
+
+(defgeneric compile-to-js (obj)
+  (:method ((obj namespace))
+    (with-output-to-string (out)
+      (write-namespace obj out)))
+  (:method (obj)
+    (compile-to-js (parse-template obj))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; namespace/template
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defclass javascript-backend () ())
 
 (defmethod compile-template ((backend (eql :javascript-backend)) template)
   (compile-template (make-instance 'javascript-backend)
                     template))
 
 (defmethod compile-template ((backend javascript-backend) template)
-  (with-output-to-string (out)
-    (iter (for i in (translate-template backend template))
-          (format out "~A~%" (ps:ps* i)))))
+  (compile-to-js template))
 
 (defmethod compile-template ((backend javascript-backend) (templates list))
-  (with-output-to-string (out)
+  (let ((namespace-map (make-hash-table :test 'equal)))
     (iter (for template in templates)
-          (iter (for i in (translate-template backend template))
-                (format out "~A~%" (ps:ps* i))))))
+          (for namespace = (parse-template template))
+          (for name = (namespace-name namespace))
+          (setf (gethash name (namespace-name namespace))
+                (cons (namespace-templates namespace)
+                      (gethash name (namespace-name namespace) nil))))
+    (with-output-to-string (out)
+      (iter (for (name code-blocks) in-hashtable namespace-map)
+            (write-namespace-declaration name out)
+            (iter (for templates in code-blocks)
+                  (write-namespace-body name templates out))))))
+
+(defmethod compile-js-templates (templates)
+  (compile-template :javascript-backend
+                    templates))

@@ -21,6 +21,7 @@
 
            #:compile-template
            #:compile-cl-templates
+           #:compile-js-templates
 
            ;; ttable
            #:*ttable*

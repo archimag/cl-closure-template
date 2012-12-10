@@ -142,7 +142,7 @@
         ((string= name "hasData")
          (format out "($env$ && !~A.$isEmpty$($env$))" *js-namespace*))
         ((string= name "index")
-         (format out "($counter_~A$ + 1)" (var-jsname (first args))))
+         (format out "$counter_~A$" (var-jsname (first args))))
         ((string= name "isFirst")
          (format out "($counter_~A$ == 0)" (var-jsname (first args))))
         ((string= name "isLast")

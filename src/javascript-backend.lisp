@@ -100,11 +100,31 @@
 
 ;;;; variable
 
+(defparameter +reserved-js-words+ '("abstract" "assert" "boolean" "break"
+                                    "byte" "case" "catch" "char" "class"
+                                    "const" "continue" "debugger" "decimal"
+                                    "default" "delete" "do" "double" "else"
+                                    "ensure" "enum" "event" "export" "extends"
+                                    "false" "final" "finally" "float" "for"
+                                    "function" "get" "goto" "if" "implements"
+                                    "import" "in" "instanceof" "int"
+                                    "interface" "internal" "invariant" "let"
+                                    "long" "namespace" "native" "new" "null"
+                                    "package" "private" "protected" "public"
+                                    "require" "return" "sbyte" "set" "short"
+                                    "static" "super" "switch" "synchronized"
+                                    "this" "throw" "throws" "transient" "true"
+                                    "try" "typeof" "uint" "ulong" "use"
+                                    "ushort" "var" "void" "volatile" "while"
+                                    "with" "yield"))
+
 (defmethod write-expression ((expr var) out)
   (let ((name (var-jsname expr)))
-    (unless (member name  *local-variables* :test #'string=)
-      (write-string "$env$." out))
-    (write-string name out)))
+    (if (member name  *local-variables* :test #'string=)
+        (write-string name out)
+        (if (member name +reserved-js-words+ :test #'string=)
+            (format out "$env$['~A']" name)
+            (format out "$env$.~A" name)))))
 
 ;;;; fcall
 

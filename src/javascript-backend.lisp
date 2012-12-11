@@ -636,6 +636,7 @@ var module = { };" out)
     (with-output-to-string (out)
       (iter (for (name code-blocks) in-hashtable namespace-map)
             (write-namespace-declaration name out)
+            (write-namepspace-helpers name out)
             (iter (for templates in code-blocks)
                   (write-namespace-body name templates out))))))
 

@@ -533,10 +533,10 @@
 
 (defun write-namespace (namespace out &aux (name (namespace-name namespace)))
   (write-namespace-declaration name out)
-  (write-namepspace-helpers name out)
+  (write-namespace-helpers name out)
   (write-namespace-body name (namespace-templates namespace) out))
 
-(defun write-namepspace-helpers (name out)
+(defun write-namespace-helpers (name out)
   (macrolet ((write-function (funname (&optional (args "obj"))  &body body)
                `(progn
                   (write-line "" out)
@@ -599,7 +599,7 @@
     ;(write-namespace obj out)))
     (write-string "define(function () {
 var module = { };" out)
-    (write-namepspace-helpers "module" out)
+    (write-namespace-helpers "module" out)
     (write-namespace-body "module" (namespace-templates (parse-template obj)) out)
     (write-string "return module; });" out)))
 
@@ -636,6 +636,7 @@ var module = { };" out)
     (with-output-to-string (out)
       (iter (for (name code-blocks) in-hashtable namespace-map)
             (write-namespace-declaration name out)
+            (write-namespace-helpers name out)
             (iter (for templates in code-blocks)
                   (write-namespace-body name templates out))))))
 

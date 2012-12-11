@@ -64,7 +64,7 @@
           (1+ space)
           (group (1+ (not space)))
           (0+ (: (1+ space) (1+ (not (any space "}")))))
-          (0+ space)          
+          (0+ space)
           "}")
      (1 closure-template-tag-face)
      (2 font-lock-function-name-face))
@@ -93,7 +93,7 @@
 	  (0+ space)
 	  (group "\"")
           (0+ (not (any "}" "\"")))
-          (0+ space)          
+          (0+ space)
 	  (group "\"")
 	  (0+ space)
           "}")
@@ -108,7 +108,7 @@
   `((,(rx "$"
           (group (1+ (or word "."))))
      (1 font-lock-variable-name-face))))
-          
+
 
 (defvar *closure-template-substition-keywords*
   `((,(rx (or "{sp}"
@@ -150,7 +150,7 @@
           (group (or "/if" "else" "/switch" "default"))
           "}")
      (1 closure-template-tag-face))))
-     
+
 (defun closure-template-html-font-lock-keywords-3 ()
   (append *closure-template-comment-keywords*
           *closure-template-namespace-keywords*
@@ -285,14 +285,14 @@
                                  sgml-basic-offset)))
       (closed (indent-line-to (second ind)))
       ((nil) (indent-sgml-in-closure)))))
-       
+
 
 (defun indent-closure-close ()
   (let ((prev (closure-previous-indent)))
     (case (first prev)
       (opened (indent-line-to (second prev)))
       (otherwise (indent-line-to (- (second prev) sgml-basic-offset))))))
-          
+
 (defun closure-indent-line ()
   (interactive)
   (cond
@@ -300,6 +300,26 @@
    ((closure-open) (indent-closure-open))
    ((closure-any-com) nil)
    (t (indent-sgml-in-closure))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Compilation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun closure-template-compile ()
+  "Compile CL-Closure-Template file"
+  (interactive)
+  (save-buffer)
+  (when (slime-connected-p)
+    (message "Compiling Closure Templates...")
+    (let ((result (slime-eval `(cl:handler-case (cl:progn
+                                                 (closure-template:compile-template :common-lisp-backend
+                                                                                    (cl:parse-namestring ,(buffer-file-name)))
+                                                 (cl:cons t t))
+                                                (t (e)
+                                                   (cl:cons nil (cl:format nil "~A" e)))))))
+      (if (car result)
+          (message "Template compilation was done")
+        (message "Template compilation error: %s" (cdr result))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;###autoload
@@ -334,8 +354,6 @@
   (modify-syntax-entry ?/ ". 14")
 (set (make-local-variable 'indent-line-function) 'closure-indent-line))
 
-
-
+(define-key closure-template-html-mode-map (kbd "C-c C-l") 'closure-template-compile)
 
 (provide 'closure-template-html-mode)
-

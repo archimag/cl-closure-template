@@ -309,8 +309,24 @@
 
 ;;;; print
 
+(defun make-user-print-directive-handler (d d-args-list expr)
+  (if-let (d-handler (gethash d *user-print-directives*))
+    #'(lambda (env) (funcall d-handler d-args-list env (funcall expr env)))
+    expr))
+
+(defun make-all-user-print-directives-handler (cmd expr)
+  (let* ((cur-d (car cmd))
+         (cur-d-args (cadr cmd))
+         (cur-d-args-list (if (listp cur-d-args) cur-d-args (list cur-d-args)))
+         (cur-d-handler (make-user-print-directive-handler cur-d cur-d-args-list expr)))
+    (if (cddr cmd)
+        (make-all-user-print-directives-handler (cddr cmd)
+                                                cur-d-handler)
+        cur-d-handler)))
+
 (defmethod make-command-handler ((cmd closure-template.parser:print-command))
-  (let ((expr (make-expression-handler (closure-template.parser:print-expression cmd)))
+  (let ((expr (make-all-user-print-directives-handler (cdr (closure-template.parser:print-expression cmd))
+						      (make-expression-handler (closure-template.parser:print-expression cmd))))
         (escape-mode (let ((props (closure-template.parser:print-directives cmd)))
                        (cond
                          ((getf props :no-autoescape) :no-autoescape)

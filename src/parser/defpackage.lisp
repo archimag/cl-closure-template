@@ -70,11 +70,17 @@
            ;; namespace
            #:namespace
            #:namespace-name
-           #:namespace-templates))
+           #:namespace-templates
+	   ;; user print directives
+	   #:*user-print-directives*
+	   #:add-print-directive
+	   #:define-rule))
 
 (in-package #:closure-template.parser)
 
 (defvar *closure-template-rules* (make-hash-table))
+
+(defvar *user-print-directives* (make-hash-table))
 
 (defmacro with-closure-template-rules (&body body)
   `(let ((esrap::*rules* *closure-template-rules*))

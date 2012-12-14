@@ -99,6 +99,22 @@
   ((expr :initarg :expr :reader print-expression)
    (directives :initarg :directives :reader print-directives)))
 
+(defmacro wrap-user-print-directive (d-symbol-cl-templ d-symbol-orig)
+  `(define-rule ,d-symbol-cl-templ (and (? whitespace) "|" (? whitespace) ,d-symbol-orig (? whitespace))
+     (:destructure (w1 d w2 upd w3)
+                   (declare (ignore w1 d w2 w3))
+                   (list ',d-symbol-cl-templ upd))))
+
+(defmacro add-print-directive (d-symbol d-handler) ;; TODO user will have to specify the result list transformation according to backend type
+  (alexandria:with-gensyms (rl-expr)
+    (let ((local-d-symbol (intern (concatenate 'string (symbol-name d-symbol) "-CL-TEMPL") "CLOSURE-TEMPLATE.PARSER")))
+      `(progn
+         (wrap-user-print-directive ,local-d-symbol ,d-symbol)
+         (with-closure-template-rules
+           (let ((,rl-expr (rule-expression (find-rule 'print-directive))))
+             (change-rule 'print-directive (append ,rl-expr (list ',local-d-symbol)))))
+         (setf (gethash ',local-d-symbol *user-print-directives*) ,d-handler)))))
+
 ;;; witch
 
 (define-rule with-variable (and whitespace  simple-name "=\"" expression #\")

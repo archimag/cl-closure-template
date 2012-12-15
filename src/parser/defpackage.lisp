@@ -72,8 +72,7 @@
            #:namespace-name
            #:namespace-templates
 	   ;; user print directives
-	   #:*user-print-directives*
-	   #:add-print-directive
+	   #:register-print-directive
 	   #:define-rule))
 
 (in-package #:closure-template.parser)

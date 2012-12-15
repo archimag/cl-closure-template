@@ -101,13 +101,13 @@
 
 (defmacro wrap-user-print-directive (d-symbol-cl-templ d-symbol-orig)
   `(define-rule ,d-symbol-cl-templ (and (? whitespace) "|" (? whitespace) ,d-symbol-orig (? whitespace))
-     (:destructure (w1 d w2 upd w3)
+     (:destructure (w1 d w2 d-params w3)
                    (declare (ignore w1 d w2 w3))
-                   (list ',d-symbol-cl-templ upd))))
+                   (list ',d-symbol-cl-templ d-params))))
 
-(defmacro add-print-directive (d-symbol d-handler) ;; TODO user will have to specify the result list transformation according to backend type
+(defmacro register-print-directive (d-symbol d-handler) ;; TODO user will have to specify the result list transformation according to backend type
   (alexandria:with-gensyms (rl-expr)
-    (let ((local-d-symbol (intern (concatenate 'string (symbol-name d-symbol) "-CL-TEMPL") "CLOSURE-TEMPLATE.PARSER")))
+    (let ((local-d-symbol (intern (gensym (symbol-name d-symbol)))))
       `(progn
          (wrap-user-print-directive ,local-d-symbol ,d-symbol)
          (with-closure-template-rules

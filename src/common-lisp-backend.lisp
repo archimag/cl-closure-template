@@ -325,7 +325,7 @@
         cur-d-handler)))
 
 (defmethod make-command-handler ((cmd closure-template.parser:print-command))
-  (let ((expr (make-all-user-print-directives-handler (cdr (closure-template.parser:print-expression cmd))
+  (let ((expr (make-all-user-print-directives-handler (cdr (closure-template.parser:print-directives cmd))
 						      (make-expression-handler (closure-template.parser:print-expression cmd))))
         (escape-mode (let ((props (closure-template.parser:print-directives cmd)))
                        (cond

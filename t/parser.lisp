@@ -94,6 +94,28 @@
   (ensure-same '(:aref (:aref (:aref (:variable :x) 0) 1) (:variable :y))
                (s-expr (parse-expression "$x[0][1][$y]"))))
 
+;;; lists
+
+(addtest (expression-parser-test)
+  list-1
+  (ensure-same '(:list 1 2 3)
+               (s-expr (parse-expression "[1, 2, 3]"))))
+
+(addtest (expression-parser-test)
+  list-2
+  (ensure-same '(:list (:variable :x) "hello")
+               (s-expr (parse-expression "[$x, 'hello']"))))
+
+(addtest (expression-parser-test)
+  list-3
+  (ensure-same '(:list)
+               (s-expr (parse-expression "[]"))))
+
+(addtest (expression-parser-test)
+  list-4
+  (ensure-same '(:list 1 (:list 2 (:list 3 4)))
+               (s-expr (parse-expression "[1, [2, [3, 4]]]"))))
+
 ;; ;;;; operators
 
 (addtest (expression-parser-test)

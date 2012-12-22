@@ -188,6 +188,14 @@
       (elt (funcall arr env)
            (funcall position env)))))
 
+;; list
+
+(defmethod make-expression-handler ((list-expr closure-template.parser:list-expr))
+  (let ((values (mapcar #'make-expression-handler (closure-template.parser:list-expr-values list-expr))))
+    (named-lambda list-handler (env)
+      (iter (for val in values)
+            (collect (funcall val env))))))
+
 ;; fcall
 
 (defvar *user-functions* nil)

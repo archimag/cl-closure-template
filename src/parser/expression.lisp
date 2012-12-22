@@ -127,6 +127,17 @@
 (defclass arref (ref)
   ((position :initarg :position :reader arref-position)))
 
+;;; list
+
+(define-rule list-expr (and #\[ (? (and expression (* (and #\, expression)))) #\])
+  (:destructure (lsb expr rsb)
+    (declare (ignore lsb rsb))
+    (make-instance 'list-expr
+                   :values (remove "," (alexandria:flatten expr) :test #'equal))))
+
+(defclass list-expr ()
+  ((values :initarg :values :reader list-expr-values)))
+
 ;;; funcall
 
 (defparameter *possible-functions*
@@ -189,11 +200,12 @@
                 (return)))))
 
 (define-rule expression-part (and (? whitespace)
-                                  (+ (or expression-literal variable dotref aref funcall parenthesis))
+                                  (+ (and (or expression-literal variable funcall parenthesis list-expr)
+                                          (* (or aref dotref))))
                                   (? whitespace))
   (:destructure (w1 expr w2)
     (declare (ignore w1 w2))
-    (reduce-ref expr)))
+    (reduce-ref (alexandria:flatten expr))))
 
 (defclass operator ()
   ((name :initarg :name :reader op-name)

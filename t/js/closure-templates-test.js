@@ -142,7 +142,7 @@ ClosureTemplate.Test.testLocalVariables = function () {
 // Literals
 
 ClosureTemplate.Test.testLiteral = function () {
-    this.assertEqual('\'"&{$x}{}',
+    this.assertEqual('\'"&{$x}{}"',
                      closureTemplate.js.testLiteral1());
     this.assertEqual('Hello world!\nBy world!',
                      closureTemplate.js.testLiteral2());
@@ -220,6 +220,15 @@ ClosureTemplate.Test.testForeach = function () {
                      closureTemplate.js.testForeach4({ opernands: ["alpha", "beta", "gamma"] }));
     this.assertEqual('alpha+beta+gamma',
                      closureTemplate.js.testForeach5({ opernands: ["alpha", "beta", "gamma"] }));
+};
+
+// List
+
+ClosureTemplate.Test.testList = function () {
+    this.assertEqual('123',
+                     closureTemplate.js.testList1());
+    this.assertEqual('AB',
+                     closureTemplate.js.testList2({a: 'A', b: 'B'}));
 };
 
 // For

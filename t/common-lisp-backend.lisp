@@ -412,6 +412,25 @@ Hello world{/template}")
                                    "{template test}{foreach $opernand in $opernands}{$opernand}{if not isLast($opernand)}+{/if}{/foreach}{/template}")
                  (template-call "TEST"
                                 '(:opernands ("alpha" "beta" "gamma"))))))
+
+;;;; list
+
+(addtest (common-lisp-backend-test)
+  list-1
+  (ensure-same "123"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{foreach $x in [1, 2, 3]}{$x}{/foreach}{/template}")
+                 (template-call "TEST"))))
+
+(addtest (common-lisp-backend-test)
+  list-2
+  (ensure-same "AB"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{foreach $x in [$a, $b]}{$x}{/foreach}{/template}")
+                 (template-call "TEST" '(:a "A" :b "B")))))
+
 ;;;; for
 
 (addtest (common-lisp-backend-test)

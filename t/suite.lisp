@@ -53,6 +53,9 @@
     (list* :operator
            (s-expr (op-name obj))
            (mapcar #'s-expr (op-args obj))))
+  (:method ((obj list-expr))
+    (list* :list
+           (mapcar #'s-expr (list-expr-values obj))))
   (:method ((obj comment))
     (list :comment
           (comment-text obj)

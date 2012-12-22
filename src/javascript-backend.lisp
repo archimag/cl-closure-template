@@ -77,7 +77,10 @@
   (:method ((expr integer) out)
     (format out "~d" expr))
   (:method ((expr real) out)
-    (format out "~f" expr)))
+    (format out "~f" expr))
+  (:method (expr (out (eql nil)))
+    (with-output-to-string (stream)
+      (write-expression expr stream))))
 
 ;;;; dotref
 
@@ -125,6 +128,14 @@
         (if (member name +reserved-js-words+ :test #'string=)
             (format out "$env$['~A']" name)
             (format out "$env$.~A" name)))))
+
+;;;; list
+
+(defmethod write-expression ((expr list-expr) out)
+  (format out
+          "[~{~A~^, ~}]"
+          (iter (for val in (list-expr-values expr))
+                (collect (write-expression val nil)))))
 
 ;;;; fcall
 

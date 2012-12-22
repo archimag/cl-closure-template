@@ -28,6 +28,8 @@
            #:fcall-name
            #:fcall-jsname
            #:fcall-args
+           #:list-expr
+           #:list-expr-values
            #:operator
            #:op-name
            #:op-args

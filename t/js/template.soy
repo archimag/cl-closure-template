@@ -100,7 +100,7 @@
 {/template}
 
 {template testLiteral1}
-    {literal}'"&{$x}{}{/literal}
+    {literal}'"&{$x}{}"{/literal}
 {/template}
 
 {template testLiteral2}
@@ -170,6 +170,18 @@ By world!{/literal}
 {template testForeach5}
     {foreach $opernand in $opernands}
         {$opernand}{if not isLast($opernand)}+{/if}
+    {/foreach}
+{/template}
+
+{template testList1}
+    {foreach $x in [1, 2, 3]}
+        {$x}
+    {/foreach}
+{/template}
+
+{template testList2}
+    {foreach $x in [$a, $b]}
+        {$x}
     {/foreach}
 {/template}
 

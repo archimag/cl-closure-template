@@ -120,6 +120,21 @@
   ((vars :initarg :vars :reader with-vars)
    (body :initarg :body :reader with-body)))
 
+;;; let
+
+(define-rule let-variable (and whitespace variable "=\"" expression #\")
+  (:destructure (w var e expr q)
+    (declare (ignore w e q))
+    (list var
+          expr)))
+
+(define-rule with-let-alias (and "{let" (+ let-variable) (? whitespace) "}" (? code-block) "{/let}")
+  (:destructure (start vars w rb code end)
+    (declare (ignore start w rb end))
+    (make-instance 'with
+                   :vars vars
+                   :body code)))
+
 ;;; if-command
 
 (define-rule else (and "{else}" code-block)
@@ -294,7 +309,7 @@
            foreach
            for
            call
-           with
+           with with-let-alias
 
            comment
            whitespace

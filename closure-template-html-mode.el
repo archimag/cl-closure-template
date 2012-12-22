@@ -151,6 +151,19 @@
           "}")
      (1 closure-template-tag-face))))
 
+(defvar *closure-template-let-keywords*
+  `((,(rx "{"
+          (group "let")
+          (1+ space)
+          (1+ (not (any "}")))
+          (0+ space)
+          "}")
+     (1 closure-template-tag-face))
+    (,(rx "{"
+          (group "/let")
+          "}")
+     (1 closure-template-tag-face))))
+
 (defun closure-template-html-font-lock-keywords-3 ()
   (append *closure-template-comment-keywords*
           *closure-template-namespace-keywords*
@@ -160,9 +173,10 @@
           *closure-template-substition-keywords*
           *closure-template-foreach-keywords*
           *closure-template-if-switch-keywords*
+          *closure-template-let-keywords*
 
-	  *closure-template-css-keywords*
-	  *closure-template-msg-keywords*
+          *closure-template-css-keywords*
+          *closure-template-msg-keywords*
 
           closure-template-html-font-lock-keywords-1
           closure-template-html-font-lock-keywords-2))
@@ -220,14 +234,16 @@
                     (list *closure-template-template-keywords*
                           *closure-template-foreach-keywords*
                           *closure-template-if-switch-keywords*
-                          *closure-template-literal-keywords*))
+                          *closure-template-literal-keywords*
+                          *closure-template-let-keywords*))
               (some (lambda (obj)
                       (string-match (caadr obj)
                                     str))
                     (list *closure-template-template-keywords*
                           *closure-template-foreach-keywords*
                           *closure-template-if-switch-keywords*
-                          *closure-template-literal-keywords*)))))))
+                          *closure-template-literal-keywords*
+                          *closure-template-let-keywords*)))))))
 
 (defun closure-tag-opened ()
   (save-excursion
@@ -240,7 +256,8 @@
                 (list *closure-template-template-keywords*
                       *closure-template-foreach-keywords*
                       *closure-template-if-switch-keywords*
-                      *closure-template-literal-keywords*))))))
+                      *closure-template-literal-keywords*
+                      *closure-template-let-keywords*))))))
 
 (defun closure-previous-indent ()
   (save-excursion

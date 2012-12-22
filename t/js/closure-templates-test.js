@@ -153,6 +153,9 @@ ClosureTemplate.Test.testLiteral = function () {
 ClosureTemplate.Test.testWith = function () {
     this.assertEqual('Hello Andrey',
                      closureTemplate.js.testWith1());
+    this.assertEqual('Hello Andrey',
+                     closureTemplate.js.testLet1());
+
 };
 
 // If
@@ -211,7 +214,7 @@ ClosureTemplate.Test.testForeach = function () {
                      closureTemplate.js.testForeach2({ opernands: ["alpha", "beta", "gamma"] }));
     this.assertEqual('Hello world',
                      closureTemplate.js.testForeach2({}));
-    this.assertEqual('123',
+    this.assertEqual('012',
                      closureTemplate.js.testForeach3({ opernands: [1, 2, 3] }));
     this.assertEqual('alpha+beta+gamma',
                      closureTemplate.js.testForeach4({ opernands: ["alpha", "beta", "gamma"] }));

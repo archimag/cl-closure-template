@@ -285,6 +285,14 @@ Hello world{/template}")
                                    "{template test}{with greetingWord=\"'Hello'\" name=\"'Andrey'\"}{$greetingWord} {$name}{/with}{/template}")
                  (template-call "TEST"))))
 
+(addtest (common-lisp-backend-test)
+  with-2
+  (ensure-same "Hello Andrey"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{let $greetingWord=\"'Hello'\" $name=\"'Andrey'\"}{$greetingWord} {$name}{/let}{/template}")
+                 (template-call "TEST"))))
+
 ;;;; if
 
 (addtest (common-lisp-backend-test)

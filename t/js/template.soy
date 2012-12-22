@@ -114,6 +114,12 @@ By world!{/literal}
     {/with}
 {/template}
 
+{template testLet1}
+    {let $greetingWord="'Hello'" $name="'Andrey'"}
+        {$greetingWord} {$name}
+    {/let}
+{/template}
+
 {template testIf1}
     {if $name}Hello {$name}{/if}
 {/template}

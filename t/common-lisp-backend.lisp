@@ -431,6 +431,70 @@ Hello world{/template}")
                                    "{template test}{foreach $x in [$a, $b]}{$x}{/foreach}{/template}")
                  (template-call "TEST" '(:a "A" :b "B")))))
 
+;;;; map
+
+(addtest (common-lisp-backend-test)
+  map-1
+  (ensure-same "123"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}
+    {let $obj=\"['a': 1, 'b': 2, 'c': 3]\"}
+         {$obj.a}{$obj.b}{$obj.c}
+    {/let}
+{/template}")
+                 (template-call "TEST"))))
+
+(addtest (common-lisp-backend-test)
+  map-2
+  (ensure-same "Hello Masha"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template helloName}Hello {$name}{/template}
+{template test}{call helloName data=\"['name': 'Masha']\"/}{/template}")
+                 (template-call "TEST"))))
+
+(addtest (common-lisp-backend-test)
+  map-3
+  (ensure-same "ABC"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "
+{template test}
+    {foreach $key in keys(['a': 1, 'b': 2, 'c': 3])}
+         {$key}
+    {/foreach}
+{/template}")
+                 (template-call "TEST"))))
+
+(addtest (common-lisp-backend-test)
+  map-4
+  (ensure-same "423"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "
+{template test}
+    {let $obj=\"augmentMap(['a': 1, 'b': 2, 'c': 3], ['a': 4])\"}
+         {$obj.a}{$obj.b}{$obj.c}
+    {/let}
+{/template}")
+                 (template-call "TEST"))))
+
+(addtest (common-lisp-backend-test)
+  map-5
+  (ensure-same "ABCD"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "
+{template test}
+    {let $obj=\"augmentMap(['a': 1, 'b': 2, 'c': 3], ['a': 4, 'd': 5])\"}
+         {foreach $key in keys($obj)}
+             {$key}
+         {/foreach}
+    {/let}
+{/template}")
+                 (sort (template-call "TEST") #'char<))))
+
 ;;;; for
 
 (addtest (common-lisp-backend-test)

@@ -36,6 +36,7 @@
            #:ttable-sync-package
            #:ensure-ttable-package
            #:package-ttable
+           #:fetch-keys
            #:fetch-property
 
            ;; ASDF extension

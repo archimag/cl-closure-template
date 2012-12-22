@@ -138,6 +138,30 @@
 (defclass list-expr ()
   ((values :initarg :values :reader list-expr-values)))
 
+;;; map-expr
+
+(define-rule map-pair (and expression #\: expression)
+  (:destructure (key i value)
+    (declare (ignore i))
+    (list key value)))
+
+(define-rule empty-map-expr (and #\[ (* whitespace) #\: (* whitespace)  #\])
+  (:lambda (_)
+    (declare (ignore _))
+    (make-instance 'map-expr :pairs nil)))
+
+(define-rule real-map-expr (and #\[ (and map-pair (* (and #\, map-pair)))  #\])
+  (:destructure (lsb expr rsb)
+    (declare (ignore lsb rsb))
+    (make-instance 'map-expr
+                   :pairs (cons (car expr)
+                                (mapcar #'second (cadr expr))))))
+
+(define-rule map-expr (or empty-map-expr real-map-expr))
+
+(defclass map-expr ()
+  ((pairs :initarg :pairs :reader map-expr-items)))
+
 ;;; funcall
 
 (defparameter *possible-functions*
@@ -145,6 +169,7 @@
     "hasData"
     "randomInt"
     "length"
+    "keys" "augmentMap"
     "round"
     "floor" "ceiling"
     "min" "max"
@@ -200,7 +225,7 @@
                 (return)))))
 
 (define-rule expression-part (and (? whitespace)
-                                  (+ (and (or expression-literal variable funcall parenthesis list-expr)
+                                  (+ (and (or expression-literal variable funcall parenthesis list-expr map-expr)
                                           (* (or aref dotref))))
                                   (? whitespace))
   (:destructure (w1 expr w2)
@@ -231,8 +256,13 @@
 (define-operator not-equal "!=")
 (define-operator and "and")
 (define-operator or "or")
-(define-operator ?)
-(define-operator |:|)
+
+(define-rule |ternary-?:| (and (? whitespace) #\? expression #\: (? whitespace))
+  (:destructure (w1 question expr colon w2)
+    (declare (ignore w1 w2 question colon))
+    (list (make-instance 'operator :name '?)
+          expr
+          (make-instance 'operator :name '|:|))))
 
 (define-rule operator
   (or - not
@@ -241,7 +271,9 @@
       <= >= < >
       equal not-equal
       and or
-      ? |:|))
+      |ternary-?:|
+      ;;? |:|
+      ))
 
 (defparameter *infix-ops-priority*
   '((not)
@@ -313,10 +345,7 @@
 
 (define-rule expression (and (? (or - not)) expression-part (* (and operator expression-part)))
   (:destructure (u expr rest)
-    (let ((infix (cons expr
-                       (iter (for i in rest)
-                             (collect (first i))
-                             (collect (second i))))))
+    (let ((infix (alexandria:flatten (cons expr rest))))
       (->prefix (if u
                     (cons u infix)
                     infix)))))

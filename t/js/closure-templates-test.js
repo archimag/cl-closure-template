@@ -231,6 +231,16 @@ ClosureTemplate.Test.testList = function () {
                      closureTemplate.js.testList2({a: 'A', b: 'B'}));
 };
 
+// Map
+
+ClosureTemplate.Test.testMap = function () {
+    this.assertEqual('123', closureTemplate.js.testMap1());
+    this.assertEqual('Hello Masha', closureTemplate.js.testMap2());
+    this.assertEqual('abc', closureTemplate.js.testMap3());
+    this.assertEqual('423', closureTemplate.js.testMap4());
+    this.assertEqual('abcd', closureTemplate.js.testMap5().split("").sort().join(""));
+};
+
 // For
 
 ClosureTemplate.Test.testFor = function () {

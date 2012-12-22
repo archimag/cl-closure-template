@@ -116,6 +116,28 @@
   (ensure-same '(:list 1 (:list 2 (:list 3 4)))
                (s-expr (parse-expression "[1, [2, [3, 4]]]"))))
 
+;;; map
+
+(addtest (expression-parser-test)
+  map-1
+  (ensure-same '(:map ("a" 1) ("b" 2) ("c" 3))
+               (s-expr (parse-expression "['a': 1, 'b':2,'c' : 3]"))))
+
+(addtest (expression-parser-test)
+  map-2
+  (ensure-same '(:map ((:variable :x) (:variable :y)) ("hello" "world"))
+               (s-expr (parse-expression "[ $x : $y, 'hello': 'world']"))))
+
+(addtest (expression-parser-test)
+  map-3
+  (ensure-same '(:map)
+               (s-expr (parse-expression "[:]"))))
+
+(addtest (expression-parser-test)
+  map-4
+  (ensure-same '(:map ("a" (:map ("b" (:map ("c" 1))))))
+               (s-expr (parse-expression "['a': ['b': ['c': 1]]]"))))
+
 ;; ;;;; operators
 
 (addtest (expression-parser-test)

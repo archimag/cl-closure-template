@@ -142,6 +142,20 @@
   (:method (el)
     el))
 
+(defgeneric fetch-keys (map)
+  (:method ((map hash-table))
+    (mapcar #'string (alexandria:hash-table-keys map)))
+  (:method ((map list))
+    (if (listp (car map))
+        (mapcar #'string (mapcar #'car map))
+        (iter (for rest on map by #'cddr)
+              (collect (string (first rest))))))
+  (:method ((obj standard-object))
+    (iter (for slot in (closer-mop:class-slots (class-of obj)))
+          (for name = (closer-mop:slot-definition-name slot))
+          (when (slot-boundp obj name)
+            (collect (string name))))))
+
 (defgeneric fetch-property (map key)
   (:method ((map hash-table) key)
     (multiple-value-bind (val found) (gethash key map)
@@ -158,6 +172,30 @@
           (when (and (slot-boundp obj name)
                      (%same-name name key))
             (return (slot-value obj name))))))
+
+(defclass dict ()
+  ((additional :initarg :additional)
+   (base :initarg :base :initform nil)))
+
+(defun make-dict (base additional)
+  (make-instance 'dict
+                 :additional additional
+                 :base base))
+
+(defmethod fetch-keys ((map dict))
+  (with-slots (additional base) map
+    (if base
+        (remove-duplicates (append (fetch-keys additional)
+                                   (fetch-keys base))
+                           :test #'equal)
+        (fetch-keys additional))))
+
+(defmethod fetch-property ((map dict) key)
+  (with-slots (additional base) map
+    (or (fetch-property additional key)
+        (and base (fetch-property base key)))))
+        
+
 
 (defgeneric make-expression-handler (expr)
   (:documentation "Make expression handler")
@@ -196,6 +234,18 @@
       (iter (for val in values)
             (collect (funcall val env))))))
 
+;; map
+
+(defmethod make-expression-handler ((map-expr closure-template.parser:map-expr))
+  (let ((items (iter (for item in (closure-template.parser:map-expr-items map-expr))
+                     (collect
+                         (list (make-expression-handler (first item))
+                               (make-expression-handler (second item)))))))
+    (named-lambda map-handler (env)
+      (iter (for item in items)
+            (collect (alexandria:make-keyword (lispify-string (funcall (first item) env))))
+            (collect (funcall (second item) env))))))
+
 ;; fcall
 
 (defvar *user-functions* nil)
@@ -219,6 +269,10 @@
       ((:is-first :is-last :index)
        (make-foreach-function-handler name
                                       (var-name (car args))))
+      (:keys
+       (make-function-handler #'fetch-keys args))
+      (:augment-map
+       (make-function-handler #'make-dict args))
       (:round
        (make-function-handler #'%round args))
       (:random-int (make-function-handler #'random args))
@@ -480,10 +534,10 @@
         (body (make-code-block-handler (with-body cmd))))
     (named-lambda with-command-handler (env out)
       (funcall body
-               (append (iter (for item in vars)
+               (make-dict env
+                          (iter (for item in vars)
                              (collect (car item))
-                             (collect (funcall (cdr item) env)))
-                       env)
+                             (collect (funcall (cdr item) env))))
                out))))
 
 ;;;; call
@@ -513,10 +567,10 @@
       (named-lambda call-command-handler (env out)
         (ttable-call-template *ttable*
                               (lispify-string (funcall name-expr env))
-                              (append (iter (for arg in args)
+                              (make-dict (funcall data-expr env)
+                                         (iter (for arg in args)
                                             (collect (car arg))
-                                            (collect (funcall (cdr arg) env)))
-                                      (funcall data-expr env))
+                                            (collect (funcall (cdr arg) env))))
                               out))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

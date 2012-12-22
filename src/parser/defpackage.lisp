@@ -30,6 +30,8 @@
            #:fcall-args
            #:list-expr
            #:list-expr-values
+           #:map-expr
+           #:map-expr-items
            #:operator
            #:op-name
            #:op-args

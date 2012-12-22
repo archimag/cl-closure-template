@@ -56,6 +56,12 @@
   (:method ((obj list-expr))
     (list* :list
            (mapcar #'s-expr (list-expr-values obj))))
+  (:method ((obj map-expr))
+    (list* :map
+           (iter (for item in (map-expr-items obj))
+                 (collect
+                     (list (s-expr (first item))
+                           (s-expr (second item)))))))
   (:method ((obj comment))
     (list :comment
           (comment-text obj)

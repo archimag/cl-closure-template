@@ -137,6 +137,18 @@
           (iter (for val in (list-expr-values expr))
                 (collect (write-expression val nil)))))
 
+;;;; map
+
+(defmethod write-expression ((expr map-expr) out)
+  (format out
+          "{~{~A~^,~}}"
+          (iter (for item in (map-expr-items expr))
+                (collect
+                    (format nil
+                            "~A: ~A"
+                            (write-expression (first item) nil)
+                            (write-expression (second item) nil))))))
+
 ;;;; fcall
 
 (defmethod write-expression ((expr fcall) out)
@@ -149,11 +161,7 @@
                (iter (for arg in (cdr args))
                      (write-string ", " out)
                      (write-expression arg out)))))
-      (cond
-        ((string= name "hasData")
-         (format out "($env$ && !~A.$isEmpty$($env$))" *js-namespace*))
-        ((string= name "index")
-         (format out "$counter_~A$" (var-jsname (first args))))
+      (cond                
         ((string= name "isFirst")
          (format out "($counter_~A$ == 0)" (var-jsname (first args))))
         ((string= name "isLast")
@@ -161,16 +169,31 @@
                  "($counter_~A$ == ($sequence_~A$.length - 1))"
                  (var-jsname (first args))
                  (var-jsname (first args))))
+        ((string= name "index")
+         (format out "$counter_~A$" (var-jsname (first args))))        
+        ((string= name "hasData")
+         (format out "($env$ && !~A.$isEmpty$($env$))" *js-namespace*))
+        ((string= name "length")
+         (write-expression (first args) out)
+         (write-string ".length" out))
+        ((string= name "keys")
+         (format out
+                 "~A.$keys$(~A)"
+                 *js-namespace*
+                 (write-expression (first args) nil)))
+        ((string= name "augmentMap")
+         (format out
+                 "~A.$augmentMap$(~A, ~A)"
+                 *js-namespace*
+                 (write-expression (first args) nil)
+                 (write-expression (second args) nil)))
+        ((string= name "round")
+         (write-simple-funcall (format nil "~A.$round$" *js-namespace*)))
         ((string= name "randomInt")
          (write-string "Math.floor" out)
          (with-write-parenthesis (out)
            (write-string "Math.random() * " out)
            (write-expression (first args) out)))
-        ((string= name "round")
-         (write-simple-funcall (format nil "~A.$round$" *js-namespace*)))
-        ((string= name "length")
-         (write-expression (first args) out)
-         (write-string ".length" out))
         (t
          (write-simple-funcall (format nil "Math.~A" name)))))))
 
@@ -558,6 +581,18 @@
     (write-function "$isEmpty$" ()
       (write-line "    for (var prop in obj) if (obj.hasOwnProperty(prop)) return false;" out)
       (write-line "    return true;" out))
+
+    ;; keys
+    (write-function "$keys$" ("map")
+      (write-line "    var keys = [];" out)
+      (write-line "    for (var prop in map) keys.push(prop);" out)
+      (write-line "    return keys;" out))
+
+    ;; augmentMap
+    (write-function "$augmentMap$" ("baseMap, additionalMap")
+      (format out "    var dict = ~A.$objectFromPrototype$(baseMap);~&" name)
+      (write-line "    for (var prop in additionalMap) dict[prop] = additionalMap[prop];" out)
+      (write-line "    return dict;" out))
 
     ;; escapeHTML
     (write-function "$escapeHTML$" ()

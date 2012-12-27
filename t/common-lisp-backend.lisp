@@ -413,6 +413,15 @@ Hello world{/template}")
                  (template-call "TEST"
                                 '(:opernands ("alpha" "beta" "gamma"))))))
 
+(addtest (common-lisp-backend-test)
+  foreach-6
+  (ensure-same "0a1a2a"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{foreach $opernand in $opernands}{index($opernand)}{$char}{/foreach}{/template}")
+                 (template-call "TEST"
+                                (alexandria:plist-hash-table '(:opernands ("alpha" "beta" "gamma") :char "a"))))))
+
 ;;;; list
 
 (addtest (common-lisp-backend-test)
@@ -533,6 +542,15 @@ Hello world{/template}")
     {/for}
 {/template}")
                  (template-call "TEST"))))
+
+(addtest (common-lisp-backend-test)
+  for-6
+  (ensure-same "0b1b2b3b4b"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template test}{for $i in range(5)}{$i}{$char}{/for}{/template}")
+                 (template-call "TEST"
+                                (alexandria:plist-hash-table (list :char "b"))))))
 
 ;;;; call
 

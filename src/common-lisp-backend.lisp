@@ -498,7 +498,7 @@
                (map 'nil
                     (named-lambda foreach-body-handler (item)
                       (funcall body
-                               (list* varname item env)
+                               (make-dict env (list varname item))
                                out)
                       (incf (first varinfo)))
                     seq))))))))
@@ -521,7 +521,7 @@
                       1)))
         (iter (for i from start below end by step)
               (funcall body
-                       (list* varname i env)
+                       (make-dict env (list varname i))
                        out))))))
 
 ;;;; with

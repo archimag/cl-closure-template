@@ -4,14 +4,12 @@ Sample Code
 -------------------------
      CL-USER> (asdf:operate 'asdf:load-op '#:closure-template)
 
-     CL-USER> (asdf:operate 'asdf:load-op '#:parenscript)
-
      CL-USER> (defparameter *template* "
      /*
       *  Greets a person using 'Hello' by default.
       */
-    {namespace Closure-template.Example}
-    {template hello-name}
+    {namespace closureTemplate.Example}
+    {template helloName}
        {if not $greetingWorld}
           Hello {$name}!
        {else}
@@ -22,35 +20,106 @@ Sample Code
    
    
     CL-USER> (closure-template:compile-template :common-lisp-backend *template*)
-    CLOSURE-TEMPLATE.EXAMPLE:HELLO-NAME
-    CL-USER> (closure-template.example:hello-name '(:name "Andrey"))
-    "  Hello Andrey! "
+    #<PACKAGE "CLOSURETEMPLATE.EXAMPLE">
+    CL-USER> (closuretemplate.example:hello-name '(:name "Andrey"))
+    "Hello Andrey!"
     CL-USER> (closure-template.example:hello-name '(:name "Andrey" :greeting-world "Hi"))
-    "  Hi Andrey! "
+    "Hi Andrey!"
     
     
     CL-USER> (closure-template:compile-template :javascript-backend *template*)
-    "if (typeof ClosureTemplate == 'undefined') {
-         var ClosureTemplate = {  };
+    "if (typeof closureTemplate === 'undefined') { closureTemplate = {}; }
+    if (typeof closureTemplate.Example === 'undefined') { closureTemplate.Example = {}; }
+    
+    closureTemplate.Example.$isEmpty$ = function (obj) {
+        for (var prop in obj) if (obj.hasOwnProperty(prop)) return false;
+        return true;
     };
-    if (typeof ClosureTemplate.Example == 'undefined') {
-        ClosureTemplate.Example = {  };
+    
+    closureTemplate.Example.$escapeHTML$ = function (obj) {
+        if (typeof obj == 'string') return String(obj).split('&').join('&amp;').split( '<').join('&lt;').split('>').join('&gt;').split('\\\"').join('&quot;').split('\\'').join('&#039;');
+        else return obj;
     };
-    ClosureTemplate.Example.helloName = function ($$data$$) {
-        var $data$ = $$data$$ || {  };
-        var $templateOutput$ = '';
-        $templateOutput$ += ' ';
-        if (!$data$.greetingWorld) {
-            $templateOutput$ += ' Hello ';
-            $templateOutput$ += $data$.name;
-            $templateOutput$ += '! ';
-        } else {
-            $templateOutput$ += ' ';
-            $templateOutput$ += $data$.greetingWorld;
-            $templateOutput$ += ' ';
-            $templateOutput$ += $data$.name;
-            $templateOutput$ += '! ';
-        };
-        $templateOutput$ += '';
-        return $templateOutput$;
-    };"
+    
+    closureTemplate.Example.$round$ = function (number, ndigits) {
+        if (ndigits) {
+            var factor = Math.pow(10.0, ndigits);
+            return Math.round(number * factor) / factor;
+        }
+        else return Math.round(number)
+    };
+    
+    closureTemplate.Example.$objectFromPrototype$ = function (obj) {
+        function C () {}
+        C.prototype = obj;
+        return new C;
+    };
+    
+    closureTemplate.Example.helloName = function($env$, $target$) {
+        if (!$env$) { $env$ = {}; }
+        var $result$ = $target$ || [];
+    
+        if (!$env$.greetingWorld) {
+            $result$.push(\"Hello \");
+            $result$.push(closureTemplate.Example.$escapeHTML$($env$.name));
+            $result$.push(\"!\");
+        }
+        else {
+            $result$.push(closureTemplate.Example.$escapeHTML$($env$.greetingWorld));
+            $result$.push(\" \");
+            $result$.push(closureTemplate.Example.$escapeHTML$($env$.name));
+            $result$.push(\"!\");
+        }
+    
+        if (!$target$) return $result$.join('');
+        else return null;
+    };
+    "
+
+    CL-USER> (closure-template:compile-template :requirejs-backend *template*)
+    "define(function () {
+    var module = { };
+    module.$isEmpty$ = function (obj) {
+        for (var prop in obj) if (obj.hasOwnProperty(prop)) return false;
+        return true;
+    };
+    
+    module.$escapeHTML$ = function (obj) {
+        if (typeof obj == 'string') return String(obj).split('&').join('&amp;').split( '<').join('&lt;').split('>').join('&gt;').split('\\\"').join('&quot;').split('\\'').join('&#039;');
+        else return obj;
+    };
+    
+    module.$round$ = function (number, ndigits) {
+        if (ndigits) {
+            var factor = Math.pow(10.0, ndigits);
+            return Math.round(number * factor) / factor;
+        }
+        else return Math.round(number)
+    };
+    
+    module.$objectFromPrototype$ = function (obj) {
+        function C () {}
+        C.prototype = obj;
+        return new C;
+    };
+    
+    module.helloName = function($env$, $target$) {
+        if (!$env$) { $env$ = {}; }
+        var $result$ = $target$ || [];
+    
+        if (!$env$.greetingWorld) {
+            $result$.push(\"Hello \");
+            $result$.push(module.$escapeHTML$($env$.name));
+            $result$.push(\"!\");
+        }
+        else {
+            $result$.push(module.$escapeHTML$($env$.greetingWorld));
+            $result$.push(\" \");
+            $result$.push(module.$escapeHTML$($env$.name));
+            $result$.push(\"!\");
+        }
+    
+        if (!$target$) return $result$.join('');
+        else return null;
+    };
+    return module; });"

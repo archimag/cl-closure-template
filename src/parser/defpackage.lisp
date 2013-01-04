@@ -93,10 +93,13 @@
      (defrule ,symbol ,expression ,@options)))
 
 (defun lispify-string (str)
-  (coerce (iter (for ch in-string str)
-                (when (upper-case-p ch)
+  (coerce (iter (with prev-char)
+                (for ch in-string str)
+                (when (and (upper-case-p ch) prev-char (or (digit-char-p prev-char)
+                                                           (lower-case-p prev-char)))
                   (collect #\-))
-                (collect (char-upcase ch)))
+                (collect (char-upcase ch))
+                (setf prev-char ch))
           'string))
 
 (defun lispify-name (str)

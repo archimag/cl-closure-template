@@ -110,6 +110,9 @@
 (defun %!= (arg1 arg2)
   (not (equal arg1 arg2)))
 
+(defun %str-contains (str substr)
+  (if (search substr str) t nil))
+
 (defgeneric %same-name (s1 s2)
   (:method ((s1 symbol) (s2 symbol))
     (string-equal (symbol-name s1) (symbol-name s2)))
@@ -275,7 +278,10 @@
        (make-function-handler #'make-dict args))
       (:round
        (make-function-handler #'%round args))
-      (:random-int (make-function-handler #'random args))
+      (:random-int
+       (make-function-handler #'random args))
+      (:str-contains
+       (make-function-handler #'%str-contains args))
       (otherwise
        (make-function-handler (or (and (find (symbol-name name)
                                              closure-template.parser::*possible-functions*

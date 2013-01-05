@@ -167,13 +167,13 @@
 (defparameter *possible-functions*
   '("isFirst" "isLast" "index"
     "hasData"
-    "randomInt"
     "length"
     "keys" "augmentMap"
     "round"
     "floor" "ceiling"
     "min" "max"
-    "range"))
+    "randomInt"
+    "strContains"))
 
 (define-rule funcall (and simple-name (? whitespace) #\( (? (and expression (* (and #\, expression )))) #\))
   (:destructure (name w b1 args b2)

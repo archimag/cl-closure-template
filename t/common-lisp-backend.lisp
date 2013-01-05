@@ -216,6 +216,18 @@ Hello world{/template}")
                        (template-call "CALCULATE"
                                       '(:val 5))))))
 
+(addtest (common-lisp-backend-test)
+  calculate-11
+  (ensure-same '("True" "False" "True" "False" "True")
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template calculate}{if strContains($str1, $str2)}True{else}False{/if}{/template}")
+                (list (template-call "CALCULATE" '(:str1 "Blue Whale" :str2 "Blue"))
+                      (template-call "CALCULATE" '(:str1 "Blue Whale" :str2 "Blute"))
+                      (template-call "CALCULATE" '(:str1 "Blue Whale" :str2 "Wha"))
+                      (template-call "CALCULATE" '(:str1 "Blue Whale" :str2 "What"))
+                      (template-call "CALCULATE" '(:str1 "Blue Whale" :str2 ""))))))
+
 ;;;; substitions
 
 (addtest (common-lisp-backend-test)

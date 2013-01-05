@@ -97,6 +97,12 @@ ClosureTemplate.Test.testCalculate = function () {
                      closureTemplate.js.testCalculate11({ array: [0, 1, 2] }));
     this.assertEqual('7',
                      closureTemplate.js.testCalculate11({ array: [0, 1, 2, 3, 4, 5, 6] }));
+
+    this.assertEqual('True',  closureTemplate.js.testCalculate12({ str1: 'Blue Whale', str2: 'Blue'}));
+    this.assertEqual('False', closureTemplate.js.testCalculate12({ str1: 'Blue Whale', str2: 'Blute'}));
+    this.assertEqual('True',  closureTemplate.js.testCalculate12({ str1: 'Blue Whale', str2: 'Wha'}));
+    this.assertEqual('False', closureTemplate.js.testCalculate12({ str1: 'Blue Whale', str2: 'What'}));
+    this.assertEqual('True',  closureTemplate.js.testCalculate12({ str1: 'Blue Whale', str2: ''}));
     
 };
 

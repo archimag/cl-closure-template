@@ -194,6 +194,13 @@
          (with-write-parenthesis (out)
            (write-string "Math.random() * " out)
            (write-expression (first args) out)))
+        ((string= name "strContains")
+         (with-write-parenthesis (out)
+           (write-expression (first args) out)
+           (write-string ".indexOf" out)
+           (with-write-parenthesis (out)
+             (write-expression (second args) out))
+           (write-string "!==-1" out)))
         (t
          (write-simple-funcall (format nil "Math.~A" name)))))))
 

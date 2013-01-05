@@ -270,32 +270,46 @@
 (define-rule template-name (and alpha-char (*  (or alphanumeric #\_ #\-)))
   (:text t))
 
-(define-rule call-template-name (or (and "name=\"" expression "\"") template-name)
+(define-rule namespace-template-name (and template-name (* (and #\. template-name)))
+  (:text t))
+
+(define-rule call-template-name (or (and "name=\"" expression "\"") namespace-template-name)
   (:lambda (name)
     (if (consp name)
         (second name)
         name)))
+
+(defun parse-template-name (name)
+  (let ((dotpos (if (stringp name) (position #\. name :test #'char= :from-end t))))
+    (if dotpos
+        (values (subseq name (1+ dotpos)) (subseq name 0 dotpos))
+        (values name nil))))
                 
 (define-rule short-call (and "{call" whitespace call-template-name (? call-data) (? whitespace) "/}")
   (:destructure (start w1 name data w2 end)
     (declare (ignore start w1 w2 end))
-    (make-instance 'call
-                   :name name
-                   :data data)))
+    (multiple-value-bind (tmpl namespace) (parse-template-name name)
+      (make-instance 'call
+                     :name tmpl
+                     :namespace namespace
+                     :data data))))
 
 (define-rule full-call (and "{call" whitespace call-template-name (? call-data) (? whitespace) "}"
                             (* param) "{/call}")
   (:destructure (start w1 name data w2 rb params end)
     (declare (ignore start w1 w2 rb end))
-    (make-instance 'call
-                   :name name
-                   :data data
-                   :params params)))
+    (multiple-value-bind (tmpl namespace) (parse-template-name name)
+      (make-instance 'call
+                     :name tmpl
+                     :namespace namespace
+                     :data data
+                     :params params))))
 
 (define-rule call (or short-call full-call))
 
 (defclass call ()
   ((name :initarg :name :reader call-name)
+   (namespace :initarg :namespace :initarg nil :reader call-namespace)
    (data :initarg :data :initform nil :reader call-data)
    (params :initarg :params :initform nil :reader call-params)))
 

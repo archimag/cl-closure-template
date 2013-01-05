@@ -667,6 +667,22 @@ Hello world{/template}")
 {template test}{call name=\"'hello' + 'World'\" /}{/template}")
                  (template-call "TEST"))))
 
+(addtest (common-lisp-backend-test)
+  call-10
+  (ensure-same "Hello world"
+               (let ((pkg1 (ensure-ttable-package '#:closure-template.test.pkg1))
+                     (pkg2 (ensure-ttable-package '#:closure-template.test.pkg2)))
+                 (unwind-protect
+                      (progn
+                        (let ((*default-closure-template-package* pkg1))
+                          (compile-template :common-lisp-backend
+                                            "{template helloWorld}Hello world{/template}"))
+                        (let ((*default-closure-template-package* pkg2))
+                          (compile-template :common-lisp-backend
+                                            "{template callHelloWorld}{call closureTemplate.test.pkg1.helloWorld/}{/template}")
+                          (template-call "CALL-HELLO-WORLD")))
+                   (delete-package pkg1)
+                   (delete-package pkg2)))))
 ;;;; warnings
 
 (deftestsuite common-lisp-backend-warnings-test (common-lisp-backend-test) ())

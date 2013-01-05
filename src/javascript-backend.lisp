@@ -544,7 +544,7 @@
 (defun write-call-name (cmd out)
   (cond
     ((stringp (call-name cmd))
-     (format out "~A.~A" *js-namespace* (call-name cmd)))
+     (format out "~A.~A" (or (call-namespace cmd) *js-namespace*) (call-name cmd)))
     (t
      (write-string *js-namespace* out)
      (with-write-parenthesis (out "[]")

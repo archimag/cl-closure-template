@@ -64,6 +64,7 @@
            #:for-code-block
            #:call
            #:call-name
+           #:call-namespace
            #:call-data
            #:call-params
            ;; template

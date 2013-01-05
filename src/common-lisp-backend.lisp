@@ -569,19 +569,24 @@
 
 (defmethod make-command-handler ((cmd call))
   (let ((name-expr (make-expression-handler (call-name cmd)))
+        (namespace (call-namespace cmd))
         (data-expr (make-call-data-handler (call-data cmd)))
         (args (iter (for param in (call-params cmd))
                     (collect
                         (cons (var-name (first param))
                               (make-param-handler param))))))
-      (named-lambda call-command-handler (env out)
-        (ttable-call-template *ttable*
-                              (lispify-string (funcall name-expr env))
-                              (make-dict (funcall data-expr env)
-                                         (iter (for arg in args)
-                                            (collect (car arg))
-                                            (collect (funcall (cdr arg) env))))
-                              out))))
+    (when namespace
+      (setf namespace (lispify-string namespace)))
+    (named-lambda call-command-handler (env out)
+      (ttable-call-template (if namespace
+                                (package-ttable (find-package namespace))
+                                *ttable*)
+                            (lispify-string (funcall name-expr env))
+                            (make-dict (funcall data-expr env)
+                                       (iter (for arg in args)
+                                             (collect (car arg))
+                                             (collect (funcall (cdr arg) env))))
+                            out))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; namespace

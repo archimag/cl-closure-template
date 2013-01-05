@@ -2,6 +2,10 @@
 
 var ClosureTemplate = {  };
 
+ClosureTemplate.helloWorld = function (data, out) {
+    out.push("Hello world");
+};
+
 ClosureTemplate.Test = {  };
 
 // Simple
@@ -284,5 +288,6 @@ ClosureTemplate.Test.testCall = function () {
                     closureTemplate.js.testCall8());
     this.assertEqual('Hello Andrey',
                     closureTemplate.js.testCall9());
-
+    this.assertEqual('Hello world',
+                    closureTemplate.js.testCall10());
 };

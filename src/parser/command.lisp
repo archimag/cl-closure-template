@@ -107,7 +107,7 @@
 
 (defmacro register-print-directive (d-symbol d-handler) ;; TODO user will have to specify the result list transformation according to backend type
   (alexandria:with-gensyms (rl-expr)
-    (let ((local-d-symbol (intern (gensym (symbol-name d-symbol)))))
+    (let ((local-d-symbol (intern (symbol-name (gensym (symbol-name d-symbol))))))
       `(progn
          (wrap-user-print-directive ,local-d-symbol ,d-symbol)
          (with-closure-template-rules

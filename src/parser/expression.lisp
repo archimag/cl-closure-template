@@ -166,6 +166,7 @@
 
 (defparameter *possible-functions*
   '("isFirst" "isLast" "index"
+    "isNonnull"
     "hasData"
     "length"
     "keys" "augmentMap"

@@ -103,6 +103,9 @@ ClosureTemplate.Test.testCalculate = function () {
     this.assertEqual('True',  closureTemplate.js.testCalculate12({ str1: 'Blue Whale', str2: 'Wha'}));
     this.assertEqual('False', closureTemplate.js.testCalculate12({ str1: 'Blue Whale', str2: 'What'}));
     this.assertEqual('True',  closureTemplate.js.testCalculate12({ str1: 'Blue Whale', str2: ''}));
+
+    this.assertEqual('True',  closureTemplate.js.testCalculate13({x: 1}));
+    this.assertEqual('False', closureTemplate.js.testCalculate13({y: 1}));
     
 };
 

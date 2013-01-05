@@ -228,6 +228,16 @@ Hello world{/template}")
                       (template-call "CALCULATE" '(:str1 "Blue Whale" :str2 "What"))
                       (template-call "CALCULATE" '(:str1 "Blue Whale" :str2 ""))))))
 
+(addtest (common-lisp-backend-test)
+  calculate-12
+  (ensure-same '("True" "False")
+               (progn
+                (compile-template :common-lisp-backend
+                                  "{template calculate}{if isNonnull($x)}True{else}False{/if}{/template}")
+                (list (template-call "CALCULATE" '(:x 1))
+                      (template-call "CALCULATE" '(:y 1))))))
+                      
+
 ;;;; substitions
 
 (addtest (common-lisp-backend-test)

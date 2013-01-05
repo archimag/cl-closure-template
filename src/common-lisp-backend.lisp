@@ -176,6 +176,9 @@
                      (%same-name name key))
             (return (slot-value obj name))))))
 
+(defun %is-nonnull (value)
+  (not (null value)))
+
 (defclass dict ()
   ((additional :initarg :additional)
    (base :initarg :base :initform nil)))
@@ -270,8 +273,9 @@
         (args (closure-template.parser:fcall-args fcall)))
     (case name
       ((:is-first :is-last :index)
-       (make-foreach-function-handler name
-                                      (var-name (car args))))
+       (make-foreach-function-handler name (var-name (car args))))
+      (:is-nonnull
+       (make-function-handler #'%is-nonnull args))
       (:keys
        (make-function-handler #'fetch-keys args))
       (:augment-map

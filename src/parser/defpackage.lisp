@@ -95,7 +95,9 @@
 
 (defun lispify-string (str)
   (coerce (iter (for ch in-string str)
-                (when (upper-case-p ch)
+                (for prev-char previous ch)
+                (when (and (upper-case-p ch) prev-char (or (digit-char-p prev-char)
+                                                           (lower-case-p prev-char)))
                   (collect #\-))
                 (collect (char-upcase ch)))
           'string))

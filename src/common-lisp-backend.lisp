@@ -200,7 +200,7 @@
   (with-slots (additional base) map
     (or (fetch-property additional key)
         (and base (fetch-property base key)))))
-        
+
 
 
 (defgeneric make-expression-handler (expr)
@@ -403,7 +403,7 @@
       (:escape-html (named-lambda escape-html-print (env out)
                       (write-template-atom (escape-html (funcall expr env))
                                            out))))))
-    
+
 ;;;; if
 
 (defun make-boolean-expression-handler (expr)
@@ -420,7 +420,7 @@
             (when (funcall (car clause) env)
               (funcall (cdr clause) env out)
               (finish))))))
-  
+
 ;;;; switch
 
 (defmethod make-command-handler ((cmd switch-command))
@@ -512,7 +512,7 @@
                                out)
                       (incf (first varinfo)))
                     seq))))))))
-  
+
 ;;;; for
 
 (defmethod make-command-handler ((cmd for-command))
@@ -599,8 +599,11 @@
 
 (defun compile-namespace (obj)
   (let* ((namespace-name (closure-template.parser:namespace-name obj))
-         (package (if namespace-name
-                      (ensure-ttable-package (string-upcase namespace-name))
+         (package-name (if namespace-name
+                           (closure-template.parser:lispify-name namespace-name)
+                           nil))
+         (package (if package-name
+                      (ensure-ttable-package (string-upcase package-name))
                       *default-closure-template-package*))
          (ttable (package-ttable package)))
     (iter (for tmpl in (closure-template.parser:namespace-templates obj))
@@ -616,7 +619,7 @@
                                       :supersede t)))
     (ttable-extend-package ttable package)
     package))
-                                      
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; compile template
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

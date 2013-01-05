@@ -190,29 +190,29 @@ By world!{/literal}
 {/template}
 
 {template testMap1}
-    {let $obj="['a': 1, 'b': 2, 'c': 3]"}
+    {let $obj="{'a': 1, 'b': 2, 'c': 3}"}
         {$obj.a}{$obj.b}{$obj.c}
     {/let}
 {/template}
 
 {template testMap2}
-    {call helloName data="['name': 'Masha']" /}
+    {call helloName data="{'name': 'Masha'}" /}
 {/template}
 
 {template testMap3}
-    {foreach $key in keys(['a': 1, 'b': 2, 'c': 3])}
+    {foreach $key in keys({'a': 1, 'b': 2, 'c': 3})}
         {$key}
     {/foreach}
 {/template}
 
 {template testMap4}
-    {let $obj="augmentMap(['a': 1, 'b': 2, 'c': 3], ['a': 4])"}
+    {let $obj="augmentMap({'a': 1, 'b': 2, 'c': 3}, {'a': 4})"}
         {$obj.a}{$obj.b}{$obj.c}
     {/let}
 {/template}
 
 {template testMap5}
-    {foreach $key in keys(augmentMap(['a': 1, 'b': 2, 'c': 3], ['a': 4, 'd': 5]))}
+    {foreach $key in keys(augmentMap({'a': 1, 'b': 2, 'c': 3}, {'a': 4, 'd': 5}))}
         {$key}
     {/foreach}
 {/template}

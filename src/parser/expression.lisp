@@ -145,12 +145,12 @@
     (declare (ignore i))
     (list key value)))
 
-(define-rule empty-map-expr (and #\[ (* whitespace) #\: (* whitespace)  #\])
+(define-rule empty-map-expr (and #\{ (* whitespace) #\: (* whitespace)  #\})
   (:lambda (_)
     (declare (ignore _))
     (make-instance 'map-expr :pairs nil)))
 
-(define-rule real-map-expr (and #\[ (and map-pair (* (and #\, map-pair)))  #\])
+(define-rule real-map-expr (and #\{ (and map-pair (* (and #\, map-pair)))  #\})
   (:destructure (lsb expr rsb)
     (declare (ignore lsb rsb))
     (make-instance 'map-expr

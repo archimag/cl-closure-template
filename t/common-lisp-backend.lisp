@@ -460,7 +460,7 @@ Hello world{/template}")
                (progn
                  (compile-template :common-lisp-backend
                                    "{template test}
-    {let $obj=\"['a': 1, 'b': 2, 'c': 3]\"}
+    {let $obj=\"{'a': 1, 'b': 2, 'c': 3}\"}
          {$obj.a}{$obj.b}{$obj.c}
     {/let}
 {/template}")
@@ -472,7 +472,7 @@ Hello world{/template}")
                (progn
                  (compile-template :common-lisp-backend
                                    "{template helloName}Hello {$name}{/template}
-{template test}{call helloName data=\"['name': 'Masha']\"/}{/template}")
+{template test}{call helloName data=\"{'name': 'Masha'}\"/}{/template}")
                  (template-call "TEST"))))
 
 (addtest (common-lisp-backend-test)
@@ -482,7 +482,7 @@ Hello world{/template}")
                  (compile-template :common-lisp-backend
                                    "
 {template test}
-    {foreach $key in keys(['a': 1, 'b': 2, 'c': 3])}
+    {foreach $key in keys({'a': 1, 'b': 2, 'c': 3})}
          {$key}
     {/foreach}
 {/template}")
@@ -495,7 +495,7 @@ Hello world{/template}")
                  (compile-template :common-lisp-backend
                                    "
 {template test}
-    {let $obj=\"augmentMap(['a': 1, 'b': 2, 'c': 3], ['a': 4])\"}
+    {let $obj=\"augmentMap({'a': 1, 'b': 2, 'c': 3}, {'a': 4})\"}
          {$obj.a}{$obj.b}{$obj.c}
     {/let}
 {/template}")
@@ -508,7 +508,7 @@ Hello world{/template}")
                  (compile-template :common-lisp-backend
                                    "
 {template test}
-    {let $obj=\"augmentMap(['a': 1, 'b': 2, 'c': 3], ['a': 4, 'd': 5])\"}
+    {let $obj=\"augmentMap({'a': 1, 'b': 2, 'c': 3}, {'a': 4, 'd': 5})\"}
          {foreach $key in keys($obj)}
              {$key}
          {/foreach}

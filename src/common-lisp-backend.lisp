@@ -8,12 +8,13 @@
 (in-package #:closure-template)
 
 (defvar *autoescape* t)
+(defvar *ttable*)
+(defvar *injected-data* nil)
+(defvar *user-functions* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; ttable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defvar *ttable*)
 
 (defclass ttable ()
   ((hash :initform (make-hash-table :test 'equal) :reader ttable-hash)
@@ -208,6 +209,13 @@
   (:method (expr)
     (constantly expr)))
 
+;; injected-data
+
+(defmethod make-expression-handler ((ij closure-template.parser:injected-data))
+  (named-lambda injected-data-handler (env)
+    (declare (ignore env))
+    *injected-data*))
+
 ;; variable
 
 (defmethod make-expression-handler ((var closure-template.parser:var))
@@ -254,7 +262,7 @@
 
 ;; fcall
 
-(defvar *user-functions* nil)
+
 
 (defun find-user-function (name)
   (cdr (assoc name

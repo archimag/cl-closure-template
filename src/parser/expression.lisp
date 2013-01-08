@@ -101,6 +101,13 @@
   ((name :initarg :name :reader var-name)
    (jsname :initarg :jsname :reader var-jsname)))
 
+;;; injected data
+
+(defclass injected-data () ())
+
+(define-rule injected-data (and "$ij")
+  (:constant (make-instance 'injected-data)))
+
 ;;; dotref
 
 (defclass ref ()
@@ -226,7 +233,7 @@
                 (return)))))
 
 (define-rule expression-part (and (? whitespace)
-                                  (+ (and (or expression-literal variable funcall parenthesis list-expr map-expr)
+                                  (+ (and (or expression-literal injected-data variable funcall parenthesis list-expr map-expr)
                                           (* (or aref dotref))))
                                   (? whitespace))
   (:destructure (w1 expr w2)

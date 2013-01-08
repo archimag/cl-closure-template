@@ -42,6 +42,8 @@
     (list :aref
           (s-expr (ref-expr obj))
           (s-expr (arref-position obj))))
+  (:method ((obj injected-data))
+    :injected-data)
   (:method ((obj var))
     (list :variable
           (var-name obj)))

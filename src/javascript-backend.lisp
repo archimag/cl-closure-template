@@ -88,9 +88,12 @@
   (write-expression (ref-expr expr) out)
   (let ((name (dotref-jsname expr)))
     (cond
+      ((typep (ref-expr expr) 'injected-data)
+       (format out ".~A" name))
       ((stringp name)
        (with-write-parenthesis (out "[]")
          (write-expression name out)))
+      ;;; WTF
       (t
        (format out ".~A" name)))))
 
@@ -100,6 +103,11 @@
   (write-expression (ref-expr expr) out)
   (with-write-parenthesis (out "[]")
     (write-expression (arref-position expr) out)))
+
+;;;; injected-data
+
+(defmethod write-expression ((expr injected-data) out)
+  (write-string "$ij$" out))
 
 ;;;; variable
 
@@ -524,7 +532,7 @@
 
     (write-indent out)
     (write-call-name cmd out)
-    (format out "(~A, $result$);~&" new-env-name)))
+    (format out "(~A, $result$, $ij$);~&" new-env-name)))
 
 (defun write-call-without-params (cmd out)
   (write-indent out)
@@ -538,7 +546,7 @@
          (write-string "{}" out))
         (t
          (write-expression (call-data cmd) out))))
-    (write-string ", $result$" out))
+    (write-string ", $result$, $ij$" out))
   (write-line ";" out))
 
 (defun write-call-name (cmd out)
@@ -556,7 +564,7 @@
 
 (defun write-template (tmpl out)
   (format out
-          "~&~A.~A = function($env$, $target$) {~&"
+          "~&~A.~A = function($env$, $target$, $ij$) {~&"
           *js-namespace*
           (template-name tmpl))
 

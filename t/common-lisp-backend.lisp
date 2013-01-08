@@ -248,6 +248,28 @@ Hello world{/template}")
                                    "{template substitions}{sp}{nil}{\\r}{\\n}{\\t}{lb}{rb}{/template}")
                  (template-call "SUBSTITIONS"))))
 
+;;;; injected-data
+
+(addtest (common-lisp-backend-test)
+  injected-data-1
+  (ensure-same "Hello world"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template helloWorld}{$foo} {$ij.foo}{/template}")
+                 (let ((*injected-data* '(:foo "world")))
+                   (template-call "HELLO-WORLD" '(:foo "Hello"))))))
+
+(addtest (common-lisp-backend-test)
+  injected-data-2
+  (ensure-same "Hello world"
+               (progn
+                 (compile-template :common-lisp-backend
+                                   "{template helloWorld}{$foo} {$ij.foo}{/template}
+                                    {template callHelloWorld}{call helloWorld}{param foo: $foo /}{/call}{/template}")
+                 (let ((*injected-data* '(:foo "world")))
+                   (template-call "CALL-HELLO-WORLD" '(:foo "Hello"))))))
+  
+
 ;;;; dotted variables
 
 (addtest (common-lisp-backend-test)
@@ -269,6 +291,7 @@ Hello world{/template}")
                                 '(:obj (:msg (:first "Hello" :second "world")))))))
 
 ;;;; local variables handling
+
 (addtest (common-lisp-backend-test)
   local-vars-1
   (ensure-same "56"

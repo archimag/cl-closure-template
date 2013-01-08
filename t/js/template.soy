@@ -90,6 +90,16 @@
     {sp}{nil}{\r}{\n}{\t}{lb}{rb}
 {/template}
 
+{template testInjectedData1}
+    {$foo} {$ij.foo}
+{/template}
+
+{template testInjectedData2}
+    {call testInjectedData1}
+        {param foo: $foo /}
+    {/call}
+{/template}
+
 {template testDotted1}
     {$obj.first} {$obj.second}
 {/template}

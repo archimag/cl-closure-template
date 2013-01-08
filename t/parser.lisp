@@ -94,6 +94,16 @@
   (ensure-same '(:aref (:aref (:aref (:variable :x) 0) 1) (:variable :y))
                (s-expr (parse-expression "$x[0][1][$y]"))))
 
+(addtest (expression-parser-test)
+  var-8
+  (ensure-same '(:dotref :injected-data :y)
+               (s-expr (parse-expression "$ij.y"))))
+
+(addtest (expression-parser-test)
+  var-9
+  (ensure-same '(:aref (:dotref :injected-data :y) 0)
+               (s-expr (parse-expression "$ij.y[0]"))))
+
 ;;; lists
 
 (addtest (expression-parser-test)

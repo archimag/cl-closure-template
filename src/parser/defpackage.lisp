@@ -21,6 +21,7 @@
            #:dotref-jsname
            #:arref
            #:arref-position
+           #:injected-data
            #:var
            #:var-name
            #:var-jsname

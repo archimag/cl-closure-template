@@ -133,6 +133,13 @@ ClosureTemplate.Test.testSubstition = function () {
                      closureTemplate.js.testSubstitions());
 };
 
+// Injected data
+
+ClosureTemplate.Test.testInjectedData = function () {
+    this.assertEqual('Hello world', closureTemplate.js.testInjectedData1({ foo: 'Hello' }, null, {foo: 'world'} ));
+    this.assertEqual('Hello world', closureTemplate.js.testInjectedData2({ foo: 'Hello' }, null, {foo: 'world'}));
+};
+
 // Dotted
 
 ClosureTemplate.Test.testDottedVariables = function () {

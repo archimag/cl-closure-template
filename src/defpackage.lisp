@@ -20,8 +20,9 @@
            #:decode-uri
 
            #:compile-template
-           #:compile-cl-templates
            #:compile-js-templates
+           #:*injected-data*
+           #:compile-cl-templates
 
            ;; ttable
            #:*ttable*

@@ -632,7 +632,7 @@
       (write-line "        var factor = Math.pow(10.0, ndigits);" out)
       (write-line "        return Math.round(number * factor) / factor;" out)
       (write-line "    }" out)
-      (write-line "    else return Math.round(number)" out))
+      (write-line "    else return Math.round(number);" out))
 
     ;; objectFromPrototype
     (write-function "$objectFromPrototype$" ()

@@ -310,7 +310,7 @@
 ;;;; print
 
 (defun make-user-print-directive-handler (d d-args expr)
-  (if-let (d-handler (gethash d closure-template.parser::*user-print-directives*))
+  (if-let (d-handler (gethash d closure-template.parser::*user-print-directive-handlers*))
     #'(lambda (env) (funcall d-handler d-args env (funcall expr env)))
     expr))
 
@@ -346,7 +346,7 @@
       (:escape-html (named-lambda escape-html-print (env out)
                       (write-template-atom (escape-html (funcall expr env))
                                            out))))))
-    
+
 ;;;; if
 
 (defun make-boolean-expression-handler (expr)
@@ -363,7 +363,7 @@
             (when (funcall (car clause) env)
               (funcall (cdr clause) env out)
               (finish))))))
-  
+
 ;;;; switch
 
 (defmethod make-command-handler ((cmd switch-command))
@@ -455,7 +455,7 @@
                                out)
                       (incf (first varinfo)))
                     seq))))))))
-  
+
 ;;;; for
 
 (defmethod make-command-handler ((cmd for-command))
@@ -554,7 +554,7 @@
                                       :supersede t)))
     (ttable-extend-package ttable package)
     package))
-                                      
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; compile template
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

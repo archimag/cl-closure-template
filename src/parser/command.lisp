@@ -84,7 +84,7 @@
   (:destructure (w1 d w2 i value w3)
     (declare (ignore w1 d w2 i w3))
     (list :insert-word-breaks value)))
-  
+
 (define-rule print-directive (or no-autoescape-d id-d escape-html-d escape-uri-d escape-js-d insert-word-breaks-d))
 
 (define-rule print-command (and (or "{print " "{")  expression (* print-directive) "}")
@@ -99,21 +99,33 @@
   ((expr :initarg :expr :reader print-expression)
    (directives :initarg :directives :reader print-directives)))
 
-(defmacro wrap-user-print-directive (d-symbol-cl-templ d-symbol-orig)
-  `(define-rule ,d-symbol-cl-templ (and (? whitespace) "|" (? whitespace) ,d-symbol-orig (? whitespace))
-     (:destructure (w1 d w2 d-params w3)
-                   (declare (ignore w1 d w2 w3))
-                   (list ',d-symbol-cl-templ d-params))))
+(defgeneric register-print-handler (backend-type symbol &rest args))
 
-(defmacro register-print-directive (d-symbol d-handler) ;; TODO user will have to specify the result list transformation according to backend type
-  (alexandria:with-gensyms (rl-expr)
-    (let ((local-d-symbol (intern (symbol-name (gensym (symbol-name d-symbol))))))
-      `(progn
-         (wrap-user-print-directive ,local-d-symbol ,d-symbol)
-         (with-closure-template-rules
-           (let ((,rl-expr (rule-expression (find-rule 'print-directive))))
-             (change-rule 'print-directive (append ,rl-expr (list ',local-d-symbol)))))
-         (setf (gethash ',local-d-symbol *user-print-directives*) ,d-handler)))))
+(defmethod register-print-handler ((backend-type (eql :common-lisp-backend)) symbol &rest args)
+  (setf (gethash (gethash symbol *user-print-directives*) *user-print-directive-handlers*) (getf args :function)))
+
+(defmacro wrap-user-print-directive (symbol expr &body body) ;; this is a temporal solution that needs fixing: define rule with modified body
+  `(define-rule ,symbol (and (? whitespace) "|" (? whitespace) ,expr (? whitespace))
+     (:constant (let ((result (progn
+                                ,@body)))
+                  (list ',symbol result)))))
+
+(defmacro register-print-syntax (symbol expr &body rule)
+  (let ((local-symbol (intern (symbol-name (gensym (symbol-name symbol)))
+                              "CLOSURE-TEMPLATE.PARSER")))
+    (alexandria:with-gensyms (rl-expr)
+      `(let ((,rl-expr (with-closure-template-rules
+                         (rule-expression (find-rule 'print-directive)))))
+         (progn
+           (if (gethash ',symbol *user-print-directives*)
+               (with-closure-template-rules
+                 (progn
+                   (change-rule 'print-directive (remove ',local-symbol ,rl-expr))
+                   (remove-rule ',local-symbol))))
+           (setf (gethash ',symbol *user-print-directives*) ',local-symbol)
+           (wrap-user-print-directive ,local-symbol ,expr ,@rule)
+           (with-closure-template-rules
+             (change-rule 'print-directive (append ,rl-expr (list ',local-symbol)))))))))
 
 ;;; witch
 
@@ -124,7 +136,7 @@
                          :name (lispify-name var)
                          :jsname var)
           expr)))
-                   
+
 (define-rule with (and "{with" (+ with-variable) (? whitespace) "}" (? code-block) "{/with}")
   (:destructure (start vars w rb code end)
     (declare (ignore start w rb end))
@@ -213,11 +225,11 @@
                         (* whitespace) ")")
   (:destructure (start w1 lb args w2 rb)
     (declare (ignore start w1 lb w2 rb))
-    (cons :range    
+    (cons :range
           (remove nil
                   (cons (first args)
                         (mapcar #'second (cdr args)))))))
-        
+
 
 (define-rule for (and "{for" (+ whitespace) variable (+ whitespace) "in"
                       (+ whitespace) range (* whitespace) "}"
@@ -276,7 +288,7 @@
     (if (consp name)
         (second name)
         name)))
-                
+
 (define-rule short-call (and "{call" whitespace call-template-name (? call-data) (? whitespace) "/}")
   (:destructure (start w1 name data w2 end)
     (declare (ignore start w1 w2 end))
@@ -301,7 +313,7 @@
    (params :initarg :params :initform nil :reader call-params)))
 
 ;;; code-block
-        
+
 (define-rule code-block
     (+ (or substition
            literal
@@ -327,7 +339,7 @@
        (or (keywordp (car obj))
            (find (car obj)
                  '(- not + * / rem > < >= <= equal not-equal and or if)))))
-     
+
 (defun text-neighboring-strings (obj)
   (if (and (consp obj)
            (not (check-expression-p obj)))
@@ -392,7 +404,7 @@
   ((name :initarg :name :reader template-name)
    (properties :initarg :properties :reader template-properties)
    (code-block :initarg :code-block :reader template-code-block)))
-                
+
 ;;; namespace
 
 (define-rule namespace-name (and "{namespace" whitespace (and template-name (* (and #\. template-name))) (? whitespace) #\})
@@ -412,7 +424,7 @@
 (defclass namespace ()
   ((name :initarg :name :reader namespace-name)
    (templates :initarg :templates :reader namespace-templates)))
-  
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; parse-template
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

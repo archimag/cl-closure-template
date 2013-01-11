@@ -297,8 +297,8 @@ Hello world{/template}")
   (ensure-same "56"
 	       (progn
 		 (compile-template :common-lisp-backend
-				   "{template local}{foreach $b in $c}{$b.d}{/foreach}{/template}")
-		 (template-call "LOCAL"
+				   "{template testLocal}{foreach $b in $c}{$b.d}{/foreach}{/template}")
+		 (template-call "TEST-LOCAL"
 				'(:c ((:d 5) (:d 6)))))))
 
 (addtest (common-lisp-backend-test)
@@ -306,8 +306,8 @@ Hello world{/template}")
   (ensure-same "56"
 	       (progn
 		 (compile-template :common-lisp-backend
-				   "{template local}{foreach $b in $c}{$b.d.a}{/foreach}{/template}")
-		 (template-call "LOCAL"
+				   "{template testLocal}{foreach $b in $c}{$b.d.a}{/foreach}{/template}")
+		 (template-call "TEST-LOCAL"
 				'(:c ((:d (:a 5)) (:d (:a 6))))))))
 
 ;;;; literal

@@ -10,35 +10,33 @@
   ;;(:import-from #:closure-template.parser #:parse-template  #:parse-expression #:not-equal #:lispify-string)
   (:export #:parse-template
            #:parse-expression
-           #:translate-template
-           #:*default-closure-template-package*
-           #:*default-js-namespace*
-           #:make-namespace-package
-           #:escape-html
-           #:encode-uri
-           #:encode-uri-component
-           #:decode-uri
 
+           ;; compile
            #:compile-template
            #:compile-js-templates
-           #:*injected-data*
            #:compile-cl-templates
+           #:*default-closure-template-package*
+           #:*injected-data*
 
            ;; ttable
            #:*ttable*
            #:ttable
-           #:ttable-clear
            #:ttable-find-template
            #:ttable-register-template
            #:ttable-call-template
-           #:ttable-template-name-list
-           #:ttable-clean-package
            #:ttable-extend-package
-           #:ttable-sync-package
            #:ensure-ttable-package
            #:package-ttable
            #:fetch-keys
            #:fetch-property
 
            ;; ASDF extension
-           #:closure-template))
+           #:closure-template
+
+           ;; misc
+           #:escape-html
+           #:encode-uri
+           #:encode-uri-component
+           #:decode-uri
+           #:lispify-string
+           #:lispify-name))

@@ -1,4 +1,4 @@
-;;;; common-lisp-backend.lisp
+;;; common-lisp-backend.lisp
 ;;;;
 ;;;; This file is part of the cl-closure-template library, released under Lisp-LGPL.
 ;;;; See file COPYING for details.
@@ -19,9 +19,6 @@
 (defclass ttable ()
   ((hash :initform (make-hash-table :test 'equal) :reader ttable-hash)
    (prototype :initarg :prototype :initform nil :reader ttable-prototype)))
-
-(defun ttable-clear (ttable)
-  (clrhash (ttable-hash ttable)))
 
 (defun ttable-find-template (ttable lname)
   (or (gethash lname (ttable-hash ttable))
@@ -53,13 +50,6 @@
             (hash-table-keys (ttable-hash ttable)))
         #'string<))
 
-(defun ttable-clean-package (ttable package)
-  (do-external-symbols (symbol package)
-    (let ((sname (symbol-name symbol)))
-    (unless (or (string= sname "*PACKAGE-TTABLE*")
-                (gethash sname (ttable-hash ttable)))
-      (unintern symbol package)))))
-
 (defun ttable-extend-package (ttable package)
   (dolist (name (ttable-template-name-list ttable))
     (unless (find-symbol name package)
@@ -71,11 +61,6 @@
                 (let ((*print-pretty* nil))
                   (with-output-to-string (out)
                     (ttable-call-template ttable name env out)))))))))
-
-(defun ttable-sync-package (ttable package)
-  (ttable-clean-package ttable package)
-  (ttable-extend-package ttable package)
-  package)
 
 (defun ensure-ttable-package (name &key prototype)
   (or (find-package name)

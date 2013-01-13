@@ -99,8 +99,8 @@
   ((expr :initarg :expr :reader print-expression)
    (directives :initarg :directives :reader print-directives)))
 
-(defmacro wrap-user-print-directive (symbol expr &body body) ;; this is a temporal solution that needs fixing: define rule with modified body
-  `(define-rule ,symbol (and (? whitespace) "|" (? whitespace) ,expr (? whitespace))
+(defmacro wrap-user-print-directive (local-symbol symbol expr &body body) ;; this is a temporal solution that needs fixing: define rule with modified body
+  `(define-rule ,local-symbol (and (? whitespace) "|" (? whitespace) ,expr (? whitespace))
      (:constant (let ((result (progn
                                 ,@body)))
                   (list ',symbol result)))))
@@ -118,7 +118,7 @@
                    (change-rule 'print-directive (remove ',local-symbol ,rl-expr))
                    (remove-rule ',local-symbol))))
            (setf (gethash ',symbol *user-print-directives*) ',local-symbol)
-           (wrap-user-print-directive ,local-symbol ,expr ,@rule)
+           (wrap-user-print-directive ,local-symbol ,symbol ,expr ,@rule)
            (with-closure-template-rules
              (change-rule 'print-directive (append ,rl-expr (list ',local-symbol)))))))))
 

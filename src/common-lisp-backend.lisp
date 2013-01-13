@@ -378,8 +378,7 @@
 lambda function with prototype (lambda (parameters environment value))"
   ;; FXIME: Add function to check directive existense
   ;; FXIME: Move *user-print-directive-handlers* out of parser package
-  (setf (gethash (gethash symbol closure-template.parser::*user-print-directives*)
-                 closure-template.parser::*user-print-directive-handlers*)
+  (setf (gethash symbol closure-template.parser::*user-print-directive-handlers*)
         (getf args :function)))
 
 (defun make-user-print-directive-handler (d d-args expr)

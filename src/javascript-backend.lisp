@@ -283,29 +283,72 @@
 
 ;;;; print
 
+(defstruct print-handler impl name dependencies param-converter)
+
+(defparameter *custom-print-handlers* (make-hash-table))
+
+(defmethod register-print-handler ((backend (eql :javascript-backend)) directive &rest params)
+  "Register DIRECTIVE handler for Javascript backend.
+The following parameters are accepted:
+:HANDLER - string which defines actual Javascript handler like \"function (params, value) { }\";
+:FUNCTION - string with name of handler function (it should be defined elsewhere with
+prototype similar to above);
+:PARAMETER-CONVERTER - lambda which accepts data from parser and returns string parameters for handler.
+
+:HANDLER or :FUNCTION are required, :PARAMETER-CONVERTER is optional. If :PARAMETER-CONVERTER is NIL or
+it returns NIL or empty string then \"params\" argument will be omitted in call to handler."
+  (let ((handler (getf params :handler))
+        (name (getf params :FUNCTION))
+        (converter (getf params :parameter-converter)))
+    (unless name
+      (setf name (format nil "$$customPrintDirective~A$$" (remove-if-not #'alphanumericp (symbol-name directive)))))
+    (setf (gethash directive *custom-print-handlers*) (make-print-handler :impl handler
+                                                                          :name name
+                                                                          :param-converter converter
+                                                                          :dependencies '())))
+  t)
+
+(defun write-custom-print-directives (directives expr out)
+  (if directives
+      (let ((directive (first directives))
+            (params (second directives)))
+        (if-let (handler (gethash directive *custom-print-handlers*))
+          (progn
+            (format out "~A.~A" *js-namespace* (print-handler-name handler))
+            (with-write-parenthesis (out)
+              (when-let (converter (print-handler-param-converter handler))
+                (let ((string-param (funcall converter params)))
+                  (when (and string-param (< 0 (length string-param)))
+                    (write-string string-param out)
+                    (write-string ", " out))))
+              (write-custom-print-directives (cddr directives) expr out)))
+          (write-custom-print-directives (cddr directives) expr out)))
+      (write-expression expr out)))
+
 (defmethod write-command ((cmd print-command) out)
   (write-indent out)
   (write-string "$result$.push" out)
   (let ((expr (print-expression cmd))
         (directives (print-directives cmd)))
+    (format t "Directives ~S~%" directives)
     (with-write-parenthesis (out)
       (cond
         ((getf directives :id)
          (write-string "encodeURIComponent" out)
          (with-write-parenthesis (out)
-           (write-expression expr out)))
+           (write-custom-print-directives directives expr out)))
         ((getf directives :escape-uri)
          (write-string "encodeURI" out)
          (with-write-parenthesis (out)
-           (write-expression expr out)))
+           (write-custom-print-directives directives expr out)))
         ((or (getf directives :escape-html)
              (and *autoescape*
                   (not (getf directives :no-autoescape))))
          (format out "~A.$escapeHTML$" *js-namespace*)
          (with-write-parenthesis (out)
-           (write-expression expr out)))
+           (write-custom-print-directives directives expr out)))
         (t
-         (write-expression expr out))))
+         (write-custom-print-directives directives expr out))))
     (write-line ";" out)))
 
 ;;;; if
@@ -638,7 +681,12 @@
     (write-function "$objectFromPrototype$" ()
       (write-line "    function C () {}" out)
       (write-line "    C.prototype = obj;" out)
-      (write-line "    return new C;" out))))
+      (write-line "    return new C;" out)))
+
+    ;; Custom print directive handlers
+  (iter (for (directive handler) in-hashtable *custom-print-handlers*)
+        (write-line "" out)
+        (format out "~A.~A = ~A;" name (print-handler-name handler) (print-handler-impl handler))))
 
 (defun write-namespace-declaration (name out)
   (iter (for pos first (position #\. name) then (position #\. name :start (1+ pos)))

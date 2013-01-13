@@ -10,8 +10,9 @@
 (defgeneric compile-template (backend template)
   (:documentation "Compile templates from TEMPLATE using BACKEND as target language"))
 
-(defgeneric register-print-handler (backend-type symbol &rest args)
-  (:documentation "Register handler for custom print directive SYMBOL in BACKEND.
-Exact parameters in ARGS are defined in implementations."))
+(defgeneric register-print-handler (backend directive &rest options)
+  (:documentation "Register handler for custom print directive in BACKEND.
+Directive syntax is defined by DIRECTIVE. Actual handler parameters are depend on
+backend type."))
 
 (import 'closure-template.parser:register-print-handler :closure-template)

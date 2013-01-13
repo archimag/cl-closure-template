@@ -6,7 +6,7 @@
 ;;;; Author: Moskvitin Andrey <archimag@gmail.com>
 
 (defsystem closure-template
-  :depends-on (#:babel #:parse-number #:esrap #:iterate #:closer-mop #:split-sequence)
+  :depends-on (#:babel #:parse-number #:esrap #:iterate #:closer-mop #:split-sequence #:alexandria)
   :pathname "src/"
   :serial t
   :components ((:module "parser"

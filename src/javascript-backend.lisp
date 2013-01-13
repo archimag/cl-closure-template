@@ -588,8 +588,12 @@
 
 (defun write-namespace (namespace out &aux (name (namespace-name namespace)))
   (write-namespace-declaration name out)
-  (write-namespace-helpers name out)
-  (write-namespace-body name (namespace-templates namespace) out))
+  (format out "~A = (function () {
+var module = { };" name)
+  (write-namespace-helpers "module" out)
+  (write-namespace-body "module" (namespace-templates (parse-template namespace)) out)
+  (write-string "return module; })();
+" out))
 
 (defun write-namespace-helpers (name out)
   (macrolet ((write-function (funname (&optional (args "obj"))  &body body)
@@ -661,14 +665,13 @@
     (compile-to-js (parse-template obj))))
 
 (defun compile-to-requirejs (obj)
-  ;(:method ((obj namespace))
   (with-output-to-string (out)
-    ;(write-namespace obj out)))
     (write-string "define(function () {
 var module = { };" out)
     (write-namespace-helpers "module" out)
     (write-namespace-body "module" (namespace-templates (parse-template obj)) out)
-    (write-string "return module; });" out)))
+    (write-string "return module; });
+" out)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; namespace/template
@@ -703,9 +706,13 @@ var module = { };" out)
     (with-output-to-string (out)
       (iter (for (name code-blocks) in-hashtable namespace-map)
             (write-namespace-declaration name out)
-            (write-namespace-helpers name out)
+            (format out "~A = (function () {
+var module = { };" name)
+            (write-namespace-helpers "module" out)
             (iter (for templates in code-blocks)
-                  (write-namespace-body name templates out))))))
+                  (write-namespace-body "module" templates out))
+            (write-string "return module; })();
+" out)))))
 
 (defmethod compile-js-templates (templates)
   (compile-template :javascript-backend

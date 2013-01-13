@@ -33,6 +33,10 @@
            ;; ASDF extension
            #:closure-template
 
+           ;; Custom print directives
+           #:define-print-syntax
+           #:register-print-handler
+
            ;; misc
            #:escape-html
            #:encode-uri

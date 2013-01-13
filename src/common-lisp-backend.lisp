@@ -373,10 +373,19 @@
       (write-template-atom text out))))
 
 ;;;; print
+(defmethod register-print-handler ((backend-type (eql :common-lisp-backend)) symbol &rest args)
+  "Register handler for print directive SYMBOL in the BACKEND. ARGS must contain symbol :FUNCTION and
+lambda function with prototype (lambda (parameters environment value))"
+  ;; FXIME: Add function to check directive existense
+  ;; FXIME: Move *user-print-directive-handlers* out of parser package
+  (setf (gethash (gethash symbol closure-template.parser::*user-print-directives*)
+                 closure-template.parser::*user-print-directive-handlers*)
+        (getf args :function)))
 
 (defun make-user-print-directive-handler (d d-args expr)
   (if-let (d-handler (gethash d closure-template.parser::*user-print-directive-handlers*))
     #'(lambda (env) (funcall d-handler d-args env (funcall expr env)))
+    ;; FIXME: Raise an error when custom directive is not found
     expr))
 
 (defun make-all-user-print-directives-handler (cmd expr)

@@ -99,18 +99,13 @@
   ((expr :initarg :expr :reader print-expression)
    (directives :initarg :directives :reader print-directives)))
 
-(defgeneric register-print-handler (backend-type symbol &rest args))
-
-(defmethod register-print-handler ((backend-type (eql :common-lisp-backend)) symbol &rest args)
-  (setf (gethash (gethash symbol *user-print-directives*) *user-print-directive-handlers*) (getf args :function)))
-
 (defmacro wrap-user-print-directive (symbol expr &body body) ;; this is a temporal solution that needs fixing: define rule with modified body
   `(define-rule ,symbol (and (? whitespace) "|" (? whitespace) ,expr (? whitespace))
      (:constant (let ((result (progn
                                 ,@body)))
                   (list ',symbol result)))))
 
-(defmacro register-print-syntax (symbol expr &body rule)
+(defmacro define-print-syntax (symbol expr &body rule)
   (let ((local-symbol (intern (symbol-name (gensym (symbol-name symbol)))
                               "CLOSURE-TEMPLATE.PARSER")))
     (alexandria:with-gensyms (rl-expr)

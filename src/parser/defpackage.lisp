@@ -78,7 +78,7 @@
            #:namespace-name
            #:namespace-templates
 	   ;; user print directives
-	   #:register-print-syntax
+           #:define-print-syntax
            #:register-print-handler))
 
 (in-package #:closure-template.parser)

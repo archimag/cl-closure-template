@@ -146,6 +146,10 @@
             (collect (string name))))))
 
 (defgeneric fetch-property (map key)
+  (:method (map (key integer))
+    (elt map key))
+  (:method ((map list) (key integer))
+    (elt map key))
   (:method ((map hash-table) key)
     (multiple-value-bind (val found) (gethash key map)
       (if (not found)
@@ -222,8 +226,8 @@
   (let ((arr (make-expression-handler (closure-template.parser:ref-expr arref)))
         (position (make-expression-handler (closure-template.parser:arref-position arref))))
     (named-lambda arref-handler (env)
-      (elt (funcall arr env)
-           (funcall position env)))))
+      (fetch-property (funcall arr env)
+                      (funcall position env)))))
 
 ;; list
 

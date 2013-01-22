@@ -152,13 +152,15 @@
 
 (defvar *closure-template-let-keywords*
   `((,(rx "{"
-          (group (or "let"))
+          (group "let")
           (1+ space)
           (1+ (not (any "}")))
           (0+ space)
           "}")
      (1 closure-template-tag-face))
-    (,(rx "{" (group (or "/let")) "}")
+    (,(rx "{"
+          (group "/let")
+          "}")
      (1 closure-template-tag-face))))
 
 (defun closure-template-html-font-lock-keywords-3 ()
@@ -220,30 +222,41 @@
     (beginning-of-line)
     (looking-at *closure-close*)))
 
-(defvar *closure-template-indent-keywords*
-  (list *closure-template-template-keywords*
-        *closure-template-foreach-keywords*
-        *closure-template-if-switch-keywords*
-        *closure-template-literal-keywords*
-        *closure-template-let-keywords*))
-
 (defun closure-tag-closed ()
   (save-excursion
     (beginning-of-line)
     (if (looking-at *closure-tag-closed*)
         (let ((str (match-string 1)))
-          (some (lambda (obj)
-                  (or (and (caar obj) (string-match (caar obj) str))
-                      (and (caadr obj) (string-match (caadr obj) str))))
-                *closure-template-indent-keywords*)))))
+          (or (some (lambda (obj)
+                      (string-match (caar obj)
+                                    str))
+                    (list *closure-template-template-keywords*
+                          *closure-template-foreach-keywords*
+                          *closure-template-if-switch-keywords*
+                          *closure-template-literal-keywords*
+                          *closure-template-let-keywords*))
+              (some (lambda (obj)
+                      (string-match (caadr obj)
+                                    str))
+                    (list *closure-template-template-keywords*
+                          *closure-template-foreach-keywords*
+                          *closure-template-if-switch-keywords*
+                          *closure-template-literal-keywords*
+                          *closure-template-let-keywords*)))))))
 
 (defun closure-tag-opened ()
   (save-excursion
     (beginning-of-line)
     (if (looking-at *closure-tag-opened*)
         (let ((str (match-string 1)))
-          (some (lambda (obj) (string-match (caar obj) str))
-                *closure-template-indent-keywords*)))))
+          (some (lambda (obj)
+                  (string-match (caar obj)
+                                str))
+                (list *closure-template-template-keywords*
+                      *closure-template-foreach-keywords*
+                      *closure-template-if-switch-keywords*
+                      *closure-template-literal-keywords*
+                      *closure-template-let-keywords*))))))
 
 (defun closure-previous-indent ()
   (save-excursion
@@ -262,13 +275,12 @@
     (case (first prev)
       (opened (indent-line-to (+ (second prev)
                                  sgml-basic-offset)))
-      (closed (indent-line-to (second prev)))
       (otherwise
        (let* ((savep (point))
               (indent-col (save-excursion
-                            (back-to-indentation)
-                            (if (>= (point) savep) (setq savep nil))
-                            (sgml-calculate-indent))))
+                                 (back-to-indentation)
+                                 (if (>= (point) savep) (setq savep nil))
+                                 (sgml-calculate-indent))))
          (cond
           ((eql (first prev) 'closed)
            (setf indent-col
@@ -280,6 +292,7 @@
            (if savep
                (save-excursion (indent-line-to indent-col))
              (indent-line-to indent-col))))))))
+
 
 (defun indent-closure-open ()
   (let ((ind (closure-previous-indent)))
@@ -297,6 +310,7 @@
       (otherwise (indent-line-to (- (second prev) sgml-basic-offset))))))
 
 (defun closure-indent-line ()
+  (interactive)
   (cond
    ((closure-close) (indent-closure-close))
    ((closure-open) (indent-closure-open))

@@ -122,7 +122,7 @@
 
 (defvar *closure-template-foreach-keywords*
   `((,(rx "{"
-          (group "foreach")
+          (group (or "foreach" "ifempty"))
           (1+ space)
           (1+ (not space))
           (1+ space)
@@ -200,6 +200,9 @@
 (defvar *closure-tag-opened* "^[^\n]*\\({[^\n^{/]+[^\n^{]*[^\n^{/]+}\\)[^\n^{]*$")
 (defvar *closure-tag-closed* "^[^\n]*\\({/[^\n^{]+}\\|{[^\n^{]+/}\\)[^\n^{]*$")
 
+(defvar closure-composite-tag-keywords
+  '("elseif" "else" "case" "default" "ifempty"))
+
 (defun closure-short-com ()
   (save-excursion
     (beginning-of-line)
@@ -222,6 +225,13 @@
     (beginning-of-line)
     (looking-at *closure-close*)))
 
+(defun closure-composite-line ()
+  (save-excursion
+    (some (lambda (key)
+            (back-to-indentation)
+            (looking-at (format "{%s" key)))
+          closure-composite-tag-keywords)))
+
 (defun closure-tag-closed ()
   (save-excursion
     (beginning-of-line)
@@ -236,8 +246,9 @@
                           *closure-template-literal-keywords*
                           *closure-template-let-keywords*))
               (some (lambda (obj)
-                      (string-match (caadr obj)
-                                    str))
+                      (if (car (second obj))
+                          (string-match (car (second obj))
+                                        str)))
                     (list *closure-template-template-keywords*
                           *closure-template-foreach-keywords*
                           *closure-template-if-switch-keywords*
@@ -262,9 +273,11 @@
   (save-excursion
     (while (and (zerop (forward-line -1))
                 (or (looking-at "[ \t]*$")
-                    (closure-any-com))))
+                    (closure-any-com)
+                    (not (looking-at ".*[{}<>]")))))
     (back-to-indentation)
     (list (cond
+           ((closure-composite-line) 'composite)
            ((closure-tag-closed) 'closed)
            ((closure-tag-opened) 'opened)
            (t nil))
@@ -272,15 +285,17 @@
 
 (defun indent-sgml-in-closure ()
   (let ((prev (closure-previous-indent)))
+    (message "%s" prev)
     (case (first prev)
-      (opened (indent-line-to (+ (second prev)
-                                 sgml-basic-offset)))
+      ((opened composite)
+       (indent-line-to (+ (second prev)
+                          sgml-basic-offset)))
       (otherwise
        (let* ((savep (point))
               (indent-col (save-excursion
-                                 (back-to-indentation)
-                                 (if (>= (point) savep) (setq savep nil))
-                                 (sgml-calculate-indent))))
+                            (back-to-indentation)
+                            (if (>= (point) savep) (setq savep nil))
+                            (sgml-calculate-indent))))
          (cond
           ((eql (first prev) 'closed)
            (setf indent-col
@@ -293,12 +308,12 @@
                (save-excursion (indent-line-to indent-col))
              (indent-line-to indent-col))))))))
 
-
 (defun indent-closure-open ()
   (let ((ind (closure-previous-indent)))
     (case (car ind)
-      (opened (indent-line-to (+ (second ind)
-                                 sgml-basic-offset)))
+      (opened
+       (indent-line-to (+ (second ind)
+                          sgml-basic-offset)))
       (closed (indent-line-to (second ind)))
       ((nil) (indent-sgml-in-closure)))))
 
@@ -306,16 +321,28 @@
 (defun indent-closure-close ()
   (let ((prev (closure-previous-indent)))
     (case (first prev)
-      (opened (indent-line-to (second prev)))
-      (otherwise (indent-line-to (- (second prev) sgml-basic-offset))))))
+      ((opened composite)
+       (indent-line-to (second prev)))
+      (otherwise
+       (indent-line-to (- (second prev) sgml-basic-offset))))))
 
 (defun closure-indent-line ()
   (interactive)
   (cond
-   ((closure-close) (indent-closure-close))
-   ((closure-open) (indent-closure-open))
-   ((closure-any-com) nil)
-   (t (indent-sgml-in-closure))))
+   ((closure-composite-line)
+    ;;(message "Composite")
+    (indent-closure-close))
+   ((closure-close)
+    ;;;(message "Close")
+    (indent-closure-close))
+   ((closure-open)
+    ;;;(message "Open")
+    (indent-closure-open))
+   ((closure-any-com)
+    (indent-sgml-in-closure))
+   (t
+    ;;(message "SGML")
+    (indent-sgml-in-closure))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Compilation

@@ -251,7 +251,9 @@
 
 ;; fcall
 
-
+(defun add-user-function (name function)
+  (closure-template.parser:add-possible-function name)
+  (push (cons (lispify-name name) function) *user-functions*))
 
 (defun find-user-function (name)
   (cdr (assoc name

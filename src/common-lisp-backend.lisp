@@ -255,6 +255,17 @@
   (closure-template.parser:add-possible-function name)
   (push (cons (lispify-name name) function) *user-functions*))
 
+(defmacro with-user-functions ((&rest functions) &body body)
+  "Executes body with possibility to call specified functions from templates.
+Usage: (with-user-functions ((\"incr\" #'1+))
+(closure-template:compile-template :common-lisp-backend \"{template test} x + 1 = {incr($x)}{/template}\"))"
+  `(let ((*user-functions* *user-functions*)
+         (closure-template.parser::*possible-functions* closure-template.parser::*possible-functions*))
+     ,@(mapcar #'(lambda (function)
+                   `(add-user-function ,(car function) ,(cadr function)))
+               functions)
+     ,@body))
+
 (defun find-user-function (name)
   (cdr (assoc name
               *user-functions*

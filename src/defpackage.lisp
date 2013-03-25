@@ -40,4 +40,4 @@
            #:decode-uri
            #:lispify-string
            #:lispify-name
-           #:add-user-function))
+           #:with-user-functions))

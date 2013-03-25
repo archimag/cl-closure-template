@@ -183,6 +183,9 @@
     "randomInt"
     "strContains"))
 
+(defun add-possible-function (name)
+  (pushnew name *possible-functions* :test #'string-equal))
+
 (define-rule funcall (and simple-name (? whitespace) #\( (? (and expression (* (and #\, expression )))) #\))
   (:destructure (name w b1 args b2)
     (declare (ignore w b1 b2))

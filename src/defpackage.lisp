@@ -39,4 +39,5 @@
            #:encode-uri-component
            #:decode-uri
            #:lispify-string
-           #:lispify-name))
+           #:lispify-name
+           #:with-user-functions))

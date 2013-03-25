@@ -15,6 +15,7 @@
            #:lispify-name
            #:lispify-string
            ;; expression
+           #:add-possible-function
            #:ref-expr
            #:dotref
            #:dotref-name

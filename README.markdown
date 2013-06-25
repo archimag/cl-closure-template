@@ -1,4 +1,4 @@
-cl-closuret-template - Common Lisp implementation of Closure Template from Google
+cl-closure-template - Common Lisp implementation of Closure Template from Google
 
 Sample Code
 -------------------------
@@ -123,3 +123,27 @@ Sample Code
         else return null;
     };
     return module; });"
+
+Adding Custom Print Directives
+------------------------------
+
+You can add custom print directives. For example, printing integers as
+hexadecimal values:
+
+    CL-USER> (closure-template:define-print-syntax printHex "hex" :constant t) 
+    CLOSURE-TEMPLATE.PARSER::PRINT-DIRECTIVE
+    CL-USER> (closure-template:register-print-handler :common-lisp-backend 'printHex :function #'(lambda (params end value) (format nil "~X" value)))
+    #<Anonymous Function #x302001B7085F>
+    CL-USER> (defparameter *template* "
+         /*
+          *  Greets a person using 'Hello' by default.
+          */
+        {namespace closureTemplate.Example}
+        {template helloName}
+        Hello {$name} {$param|hex}!
+        {/template}")
+    *TEMPLATE*
+    CL-USER> (closure-template:compile-template :common-lisp-backend *template*)
+    #<Package "CLOSURE-TEMPLATE.EXAMPLE">
+    CL-USER> (closure-template.example:hello-Name '(:name "Name" :param 128))
+    "Hello Name 80!"

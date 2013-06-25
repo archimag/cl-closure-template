@@ -15,4 +15,4 @@
 Directive syntax is defined by DIRECTIVE. Actual handler parameters are depend on
 backend type."))
 
-(import 'closure-template.parser:register-print-handler :closure-template)
+(import 'closure-template.parser:define-print-syntax :closure-template)

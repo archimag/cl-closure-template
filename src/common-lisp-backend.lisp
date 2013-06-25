@@ -380,8 +380,8 @@
 (defmethod register-print-handler ((backend-type (eql :common-lisp-backend)) symbol &rest args)
   "Register handler for print directive SYMBOL in the BACKEND. ARGS must contain symbol :FUNCTION and
 lambda function with prototype (lambda (parameters environment value))"
-  ;; FXIME: Add function to check directive existense
-  ;; FXIME: Move *user-print-directive-handlers* out of parser package
+  ;; FIXME: Add function to check directive existense
+  ;; FIXME: Move *user-print-directive-handlers* out of parser package
   (setf (gethash symbol closure-template.parser::*user-print-directive-handlers*)
         (getf args :function)))
 

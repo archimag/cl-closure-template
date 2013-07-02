@@ -71,7 +71,7 @@
 ;;;; print
 
 (defmacro define-print-directive (name value)
-  `(define-rule ,name (and (? whitespace) "|" (? whitespace) ,value (? whitespace))
+  `(define-rule ,name ,value
      (:constant '(,(lispify-name value) t))))
 
 (define-print-directive no-autoescape-d "noAutoescape")
@@ -80,12 +80,17 @@
 (define-print-directive escape-uri-d "escapeUri")
 (define-print-directive escape-js-d "escapeJs")
 
-(define-rule insert-word-breaks-d (and (? whitespace) "|" (? whitespace) "insertWordBreaks:" decimal-integer (? whitespace))
-  (:destructure (w1 d w2 i value w3)
-    (declare (ignore w1 d w2 i w3))
+(define-rule insert-word-breaks-d (and "insertWordBreaks:" decimal-integer)
+  (:destructure (i value)
+    (declare (ignore i))
     (list :insert-word-breaks value)))
 
-(define-rule print-directive (or no-autoescape-d id-d escape-html-d escape-uri-d escape-js-d insert-word-breaks-d))
+(define-rule all-print-directives (or no-autoescape-d id-d escape-html-d escape-uri-d escape-js-d insert-word-breaks-d))
+
+(define-rule print-directive (and (? whitespace ) "|" (? whitespace) all-print-directives (? whitespace))
+  (:destructure (w1 delim w2 directive w3)
+                (declare (ignore w1 delim w2 w3))
+                directive))
 
 (define-rule print-command (and (or "{print " "{")  expression (* print-directive) "}")
   (:destructure (start expr directives end)
@@ -99,28 +104,24 @@
   ((expr :initarg :expr :reader print-expression)
    (directives :initarg :directives :reader print-directives)))
 
-(defmacro wrap-user-print-directive (local-symbol symbol expr &body body) ;; this is a temporal solution that needs fixing: define rule with modified body
-  `(define-rule ,local-symbol (and (? whitespace) "|" (? whitespace) ,expr (? whitespace))
-     (:constant (let ((result (progn
-                                ,@body)))
-                  (list ',symbol result)))))
+(defmacro wrap-user-print-directive (symbol expr &body body)
+  `(define-rule ,symbol ,expr
+     (:around ()
+              (list ',symbol (esrap:call-transform)))
+     ,@body))
 
 (defmacro define-print-syntax (symbol expr &body rule)
-  (let ((local-symbol (intern (symbol-name (gensym (symbol-name symbol)))
-                              "CLOSURE-TEMPLATE.PARSER")))
-    (alexandria:with-gensyms (rl-expr)
-      `(let ((,rl-expr (with-closure-template-rules
-                         (rule-expression (find-rule 'print-directive)))))
-         (progn
-           (if (gethash ',symbol *user-print-directives*)
-               (with-closure-template-rules
-                 (progn
-                   (change-rule 'print-directive (remove ',local-symbol ,rl-expr))
-                   (remove-rule ',local-symbol))))
-           (setf (gethash ',symbol *user-print-directives*) ',local-symbol)
-           (wrap-user-print-directive ,local-symbol ,symbol ,expr ,@rule)
-           (with-closure-template-rules
-             (change-rule 'print-directive (append ,rl-expr (list ',local-symbol)))))))))
+  (alexandria:with-gensyms (rl-expr)
+    `(with-closure-template-rules
+       (let ((,rl-expr (rule-expression (find-rule 'all-print-directives))))
+         (when (gethash ',symbol *user-print-directives*)
+           (remhash ',symbol *user-print-directives*)
+           (setf ,rl-expr (remove ',symbol ,rl-expr))
+           (change-rule 'all-print-directives ,rl-expr)
+           (remove-rule ',symbol))
+         (wrap-user-print-directive ,symbol ,expr ,@rule)
+         (setf (gethash ',symbol *user-print-directives*) ',symbol)
+         (change-rule 'all-print-directives (append ,rl-expr (list ',symbol)))))))
 
 ;;; witch
 

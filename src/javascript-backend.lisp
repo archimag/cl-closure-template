@@ -273,7 +273,7 @@
 
 (defmethod write-command ((cmd comment) out)
   ;; no comments
-  )
+  (declare (ignore cmd out)))
 
 ;;;; literal
 
@@ -320,7 +320,7 @@ prototype similar to above);
 :PARAMETER-CONVERTER - lambda which accepts data from parser and returns string parameters for handler.
 
 :HANDLER or :FUNCTION are required, :PARAMETER-CONVERTER and :MODULE are optional. If :PARAMETER-CONVERTER is NIL or
-it returns NIL or empty string then \"params\" argument will be omitted in call to handler. if :MODULE not missing it
+it returns NIL or empty string then \"params\" argument will be omitted in call to handler. if :MODULE not is missing it
 should contain URI of the RequireJS module which implements function :FUNCTION. :MODULE it not used when :HANDLER is
 specified"
   (let ((*js-custom-print-handlers* *requirejs-custom-print-handlers*))

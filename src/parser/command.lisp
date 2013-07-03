@@ -107,6 +107,10 @@
    (directives :initarg :directives :reader print-directives)))
 
 (defmacro define-print-syntax (symbol expr &body rule)
+  "Define a syntax rule for a new user print directive which is identified by
+SYMBOL. EXPR defines a grammar of the new directive without whitespace and the
+\"|\" delimiter. The body of definition should contain semantic rules used to
+convert possible parameters of the directive"
   (alexandria:with-gensyms (rl-expr)
     `(with-closure-template-rules
        (when (member ',symbol +standard-print-directives+)

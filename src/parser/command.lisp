@@ -104,12 +104,6 @@
   ((expr :initarg :expr :reader print-expression)
    (directives :initarg :directives :reader print-directives)))
 
-(defmacro wrap-user-print-directive (symbol expr &body body)
-  `(define-rule ,symbol ,expr
-     (:around ()
-              (list ',symbol (esrap:call-transform)))
-     ,@body))
-
 (defmacro define-print-syntax (symbol expr &body rule)
   (alexandria:with-gensyms (rl-expr)
     `(with-closure-template-rules
@@ -119,7 +113,10 @@
            (setf ,rl-expr (remove ',symbol ,rl-expr))
            (change-rule 'all-print-directives ,rl-expr)
            (remove-rule ',symbol))
-         (wrap-user-print-directive ,symbol ,expr ,@rule)
+         (define-rule ,symbol ,expr
+           (:around ()
+                    (list ',symbol (esrap:call-transform)))
+           ,@rule)
          (setf (gethash ',symbol *user-print-directives*) ',symbol)
          (change-rule 'all-print-directives (append ,rl-expr (list ',symbol)))))))
 

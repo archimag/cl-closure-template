@@ -84,7 +84,6 @@
 
 (defvar *closure-template-rules* (make-hash-table))
 
-(defvar *user-print-directives* (make-hash-table))
 (defvar *user-print-directive-handlers* (make-hash-table))
 
 (defmacro with-closure-template-rules (&body body)

@@ -87,6 +87,8 @@
 
 (define-rule all-print-directives (or no-autoescape-d id-d escape-html-d escape-uri-d escape-js-d insert-word-breaks-d))
 
+(defparameter +standard-print-directives+ '(no-autoescape-d id-d escape-html-d escape-uri-d escape-js-d insert-word-breaks-d))
+
 (define-rule print-directive (and (? whitespace ) "|" (? whitespace) all-print-directives (? whitespace))
   (:destructure (w1 delim w2 directive w3)
                 (declare (ignore w1 delim w2 w3))
@@ -107,9 +109,12 @@
 (defmacro define-print-syntax (symbol expr &body rule)
   (alexandria:with-gensyms (rl-expr)
     `(with-closure-template-rules
+       (when (member ',symbol +standard-print-directives+)
+         (error "Standard print directive syntax can't be redefined"))
+       (when (eq 'or ',symbol)
+         (error "Custom print directive syntax can't have symbol equal to the grammar operation"))
        (let ((,rl-expr (rule-expression (find-rule 'all-print-directives))))
-         (when (gethash ',symbol *user-print-directives*)
-           (remhash ',symbol *user-print-directives*)
+         (when (member ',symbol ,rl-expr)
            (setf ,rl-expr (remove ',symbol ,rl-expr))
            (change-rule 'all-print-directives ,rl-expr)
            (remove-rule ',symbol))
@@ -117,8 +122,8 @@
            (:around ()
                     (list ',symbol (esrap:call-transform)))
            ,@rule)
-         (setf (gethash ',symbol *user-print-directives*) ',symbol)
-         (change-rule 'all-print-directives (append ,rl-expr (list ',symbol)))))))
+         (change-rule 'all-print-directives (append ,rl-expr (list ',symbol)))
+         ',symbol))))
 
 ;;; witch
 

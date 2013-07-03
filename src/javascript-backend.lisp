@@ -308,7 +308,7 @@ it returns NIL or empty string then \"params\" argument will be omitted in call 
                                                                              :name name
                                                                              :param-converter converter
                                                                              :module nil)))
-  t)
+  directive)
 
 (defmethod register-print-handler ((backend (eql :requirejs-backend)) directive &rest params)
   "Register DIRECTIVE handler for Javascript backend.
@@ -333,10 +333,8 @@ specified"
           (progn
             (setf module-ref (symbol-name (gensym "JS")))
             (setf (gethash module *requirejs-deps*) module-ref))))
-    (format t "Setting module to ~S~%" module-ref)
     (setf (print-handler-module (gethash directive *requirejs-custom-print-handlers*)) module-ref))
-    (format t "Module to ~S~%" (print-handler-module (gethash directive *requirejs-custom-print-handlers*)))
-  t)
+  directive)
 
 (defun write-custom-print-directives (directives expr out)
   (multiple-value-bind (invocations parens)

@@ -377,12 +377,13 @@
       (write-template-atom text out))))
 
 ;;;; print
+(defvar *user-print-directive-handlers* (make-hash-table))
+
 (defmethod register-print-handler ((backend-type (eql :common-lisp-backend)) symbol &rest args)
   "Register handler for print directive SYMBOL in the BACKEND. ARGS must contain symbol :FUNCTION and
 lambda function with prototype (lambda (parameters environment value))"
   ;; FIXME: Add function to check directive existense
-  ;; FIXME: Move *user-print-directive-handlers* out of parser package
-  (setf (gethash symbol closure-template.parser::*user-print-directive-handlers*)
+  (setf (gethash symbol *user-print-directive-handlers*)
         (getf args :function)))
 
 (defun make-user-print-directive-handler (d d-args expr)

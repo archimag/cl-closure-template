@@ -84,8 +84,6 @@
 
 (defvar *closure-template-rules* (make-hash-table))
 
-(defvar *user-print-directive-handlers* (make-hash-table))
-
 (defmacro with-closure-template-rules (&body body)
   `(let ((esrap::*rules* *closure-template-rules*))
      ,@body))

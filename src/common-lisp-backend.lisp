@@ -382,15 +382,15 @@
 (defmethod register-print-handler ((backend-type (eql :common-lisp-backend)) directive &rest args)
   "Register handler for print DIRECTIVE in the BACKEND. ARGS must contain symbol :FUNCTION and
 lambda function with prototype (lambda (parameters environment value))"
-  ;; FIXME: Add function to check directive existense
+  ;; TODO: Add function to check directive existense
   (setf (gethash directive *user-print-directive-handlers*)
         (getf args :function))
   directive)
 
 (defun make-user-print-directive-handler (d d-args expr)
-  (if-let (d-handler (gethash d closure-template.parser::*user-print-directive-handlers*))
+  (if-let (d-handler (gethash d *user-print-directive-handlers*))
     #'(lambda (env) (funcall d-handler d-args env (funcall expr env)))
-    ;; FIXME: Raise an error when custom directive is not found
+    ;; TODO: Raise an error when custom directive is not found
     expr))
 
 (defun make-all-user-print-directives-handler (cmd expr)

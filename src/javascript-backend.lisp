@@ -299,6 +299,9 @@ prototype similar to above);
 
 :HANDLER or :FUNCTION are required, :PARAMETER-CONVERTER is optional. If :PARAMETER-CONVERTER is NIL or
 it returns NIL or empty string then \"params\" argument will be omitted in call to handler."
+  (unless (closure-template.parser:user-print-directive-p directive)
+    (error "The symbol ~S doesn't identify user print directive" directive))
+  ;;--- TODO: Check parameters
   (let ((handler (getf params :handler))
         (name (getf params :function))
         (converter (getf params :parameter-converter)))
@@ -323,6 +326,9 @@ prototype similar to above);
 it returns NIL or empty string then \"params\" argument will be omitted in call to handler. if :MODULE not is missing it
 should contain URI of the RequireJS module which implements function :FUNCTION. :MODULE it not used when :HANDLER is
 specified"
+  (unless (closure-template.parser:user-print-directive-p directive)
+    (error "The symbol ~S doesn't identify user print directive" directive))
+  ;;--- TODO: Check parameters
   (let ((*js-custom-print-handlers* *requirejs-custom-print-handlers*))
     (apply #'register-print-handler :javascript-backend directive params))
   (let ((module (getf params :module))

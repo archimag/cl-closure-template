@@ -129,6 +129,11 @@ convert possible parameters of the directive"
          (change-rule 'all-print-directives (append ,rl-expr (list ',symbol)))
          ',symbol))))
 
+(defun user-print-directive-p (symbol)
+  (with-closure-template-rules
+    (let ((expression (rule-expression (find-rule 'all-print-directives))))
+      (and (member symbol (rest expression)) (not (member symbol +standard-print-directives+))))))
+
 ;;; witch
 
 (define-rule with-variable (and whitespace  simple-name "=\"" expression #\")

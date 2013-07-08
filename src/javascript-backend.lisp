@@ -273,7 +273,7 @@
 
 (defmethod write-command ((cmd comment) out)
   ;; no comments
-  )
+  (declare (ignore cmd out)))
 
 ;;;; literal
 
@@ -282,6 +282,96 @@
   (format out "$result$.push(\"~A\");~&" (%js (literal-content cmd))))
 
 ;;;; print
+
+(defstruct print-handler impl name module param-converter)
+
+(defparameter *js-custom-print-handlers* (make-hash-table))
+(defparameter *requirejs-custom-print-handlers* (make-hash-table))
+(defparameter *requirejs-deps* (make-hash-table :test 'equal))
+
+(defmethod register-print-handler ((backend (eql :javascript-backend)) directive &rest params)
+  "Register DIRECTIVE handler for Javascript backend.
+The following parameters are accepted:
+:HANDLER - string which defines actual Javascript handler like \"function (params, value) { }\";
+:FUNCTION - string with name of handler function (it should be defined elsewhere with
+prototype similar to above);
+:PARAMETER-CONVERTER - lambda which accepts data from parser and returns string parameters for handler.
+
+:HANDLER or :FUNCTION are required, :PARAMETER-CONVERTER is optional. If :PARAMETER-CONVERTER is NIL or
+it returns NIL or empty string then \"params\" argument will be omitted in call to handler."
+  (unless (closure-template.parser:user-print-directive-p directive)
+    (error "The symbol ~S doesn't identify user print directive" directive))
+  ;;--- TODO: Check parameters
+  (let ((handler (getf params :handler))
+        (name (getf params :function))
+        (converter (getf params :parameter-converter)))
+    (unless name
+      (setf name (format nil "$$customPrintDirective~A$$" (remove-if-not #'alphanumericp (symbol-name directive)))))
+    (setf (gethash directive *js-custom-print-handlers*) (make-print-handler :impl handler
+                                                                             :name name
+                                                                             :param-converter converter
+                                                                             :module nil)))
+  directive)
+
+(defmethod register-print-handler ((backend (eql :requirejs-backend)) directive &rest params)
+  "Register DIRECTIVE handler for Javascript backend.
+The following parameters are accepted:
+:HANDLER - string which defines actual Javascript handler like \"function (params, value) { }\";
+:FUNCTION - string with name of handler function (it should be defined elsewhere with
+prototype similar to above);
+:MODULE - RequireJS module which implements :FUNCTION.
+:PARAMETER-CONVERTER - lambda which accepts data from parser and returns string parameters for handler.
+
+:HANDLER or :FUNCTION are required, :PARAMETER-CONVERTER and :MODULE are optional. If :PARAMETER-CONVERTER is NIL or
+it returns NIL or empty string then \"params\" argument will be omitted in call to handler. if :MODULE not is missing it
+should contain URI of the RequireJS module which implements function :FUNCTION. :MODULE it not used when :HANDLER is
+specified"
+  (unless (closure-template.parser:user-print-directive-p directive)
+    (error "The symbol ~S doesn't identify user print directive" directive))
+  ;;--- TODO: Check parameters
+  (let ((*js-custom-print-handlers* *requirejs-custom-print-handlers*))
+    (apply #'register-print-handler :javascript-backend directive params))
+  (let ((module (getf params :module))
+        (module-ref))
+    (when module
+      (if (gethash module *requirejs-deps*)
+          (setf module-ref (gethash module *requirejs-deps*))
+          (progn
+            (setf module-ref (symbol-name (gensym "JS")))
+            (setf (gethash module *requirejs-deps*) module-ref))))
+    (setf (print-handler-module (gethash directive *requirejs-custom-print-handlers*)) module-ref))
+  directive)
+
+(defun write-custom-print-directives (directives expr out)
+  (multiple-value-bind (invocations parens)
+      (when directives
+        (iter (for directive in directives by #'cddr)
+              (for params in (cdr directives) by #'cddr)
+              (when-let (handler (gethash directive *js-custom-print-handlers*))
+                (format t "Directive ~S, handler ~S, function ~S, module ~S~%" directive
+                        (print-handler-impl handler) (print-handler-name handler) (print-handler-module handler))
+                (let ((invocation (with-output-to-string (str)
+                                    (when (print-handler-impl handler)
+                                      (write-string *js-namespace* str)
+                                      (write-string "." str))
+                                    (when-let (module-name (print-handler-module handler))
+                                      (write-string module-name str)
+                                      (write-string "." str))
+                                    (write-string (print-handler-name handler) str)
+                                    (write-string "(" str)
+                                    (when-let (converter (print-handler-param-converter handler))
+                                      (let ((string-param (funcall converter params)))
+                                        (when (and string-param (< 0 (length string-param)))
+                                          (write-string string-param str)
+                                          (write-string ", " str)))))))
+                  (collect invocation into invocations at beginning)
+                  (collect ")" into parens at beginning)))
+              (finally (return (values invocations parens)))))
+    (iter (for str in invocations)
+          (write-string str out))
+    (write-expression expr out)
+    (iter (for str in parens)
+          (write-string str out))))
 
 (defmethod write-command ((cmd print-command) out)
   (write-indent out)
@@ -293,19 +383,19 @@
         ((getf directives :id)
          (write-string "encodeURIComponent" out)
          (with-write-parenthesis (out)
-           (write-expression expr out)))
+           (write-custom-print-directives directives expr out)))
         ((getf directives :escape-uri)
          (write-string "encodeURI" out)
          (with-write-parenthesis (out)
-           (write-expression expr out)))
+           (write-custom-print-directives directives expr out)))
         ((or (getf directives :escape-html)
              (and *autoescape*
                   (not (getf directives :no-autoescape))))
          (format out "~A.$escapeHTML$" *js-namespace*)
          (with-write-parenthesis (out)
-           (write-expression expr out)))
+           (write-custom-print-directives directives expr out)))
         (t
-         (write-expression expr out))))
+         (write-custom-print-directives directives expr out))))
     (write-line ";" out)))
 
 ;;;; if
@@ -591,7 +681,7 @@
   (format out "~A = (function () {
 var module = { };" name)
   (write-namespace-helpers "module" out)
-  (write-namespace-body "module" (namespace-templates (parse-template namespace)) out)
+  (write-namespace-body "module" (namespace-templates namespace) out)
   (write-string "return module; })();
 " out))
 
@@ -642,7 +732,13 @@ var module = { };" name)
     (write-function "$objectFromPrototype$" ()
       (write-line "    function C () {}" out)
       (write-line "    C.prototype = obj;" out)
-      (write-line "    return new C;" out))))
+      (write-line "    return new C;" out)))
+
+  ;; Custom print directive handlers
+  (iter (for (directive handler) in-hashtable *js-custom-print-handlers*)
+        (when (print-handler-impl handler)
+          (write-line "" out)
+          (format out "~A.~A = ~A;~%" name (print-handler-name handler) (print-handler-impl handler)))))
 
 (defun write-namespace-declaration (name out)
   (iter (for pos first (position #\. name) then (position #\. name :start (1+ pos)))
@@ -666,10 +762,26 @@ var module = { };" name)
 
 (defun compile-to-requirejs (obj)
   (with-output-to-string (out)
-    (write-string "define(function () {
+    (write-string "define(" out)
+    ;; Custom print directive dependencies
+    (unless (= 0 (hash-table-count *requirejs-deps*))
+      (write-string "[" out)
+      (iter (for (uri nil) in-hashtable *requirejs-deps*)
+            (unless (first-iteration-p)
+              (write-string "," out))
+            (format out "'~A'" uri))
+      (write-string "], " out))
+    (write-string "function (" out)
+    (unless (= 0 (hash-table-count *requirejs-deps*))
+      (iter (for (nil module) in-hashtable *requirejs-deps*)
+            (unless (first-iteration-p)
+              (write-string "," out))
+          (write-string module out)))
+    (write-line ") {
 var module = { };" out)
-    (write-namespace-helpers "module" out)
-    (write-namespace-body "module" (namespace-templates (parse-template obj)) out)
+    (let ((*js-custom-print-handlers* *requirejs-custom-print-handlers*))
+      (write-namespace-helpers "module" out)
+      (write-namespace-body "module" (namespace-templates (parse-template obj)) out))
     (write-string "return module; });
 " out)))
 

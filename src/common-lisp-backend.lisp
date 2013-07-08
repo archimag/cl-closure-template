@@ -390,9 +390,36 @@ Usage: (with-user-functions ((\"incr\" #'1+))
       (write-template-atom text out))))
 
 ;;;; print
+(defvar *user-print-directive-handlers* (make-hash-table))
+
+(defmethod register-print-handler ((backend-type (eql :common-lisp-backend)) directive &rest args)
+  "Register handler for print DIRECTIVE in the BACKEND. ARGS must contain symbol :FUNCTION and
+lambda function with prototype (lambda (parameters environment value))"
+  (unless (closure-template.parser:user-print-directive-p directive)
+    (error "The symbol ~S doesn't identify user print directive" directive))
+  ;;--- TODO: Check parameters
+  (setf (gethash directive *user-print-directive-handlers*)
+        (getf args :function))
+  directive)
+
+(defun make-user-print-directive-handler (d d-args expr)
+  (if-let (d-handler (gethash d *user-print-directive-handlers*))
+    #'(lambda (env) (funcall d-handler d-args env (funcall expr env)))
+    ;;--- TODO: Raise an error when custom directive is not found
+    expr))
+
+(defun make-all-user-print-directives-handler (cmd expr)
+  (let* ((d (car cmd))
+         (d-args (cadr cmd))
+         (d-handler (make-user-print-directive-handler d d-args expr)))
+    (if (cddr cmd)
+        (make-all-user-print-directives-handler (cddr cmd)
+                                                d-handler)
+        d-handler)))
 
 (defmethod make-command-handler ((cmd closure-template.parser:print-command))
-  (let ((expr (make-expression-handler (closure-template.parser:print-expression cmd)))
+  (let ((expr (make-all-user-print-directives-handler (closure-template.parser:print-directives cmd)
+						      (make-expression-handler (closure-template.parser:print-expression cmd))))
         (escape-mode (let ((props (closure-template.parser:print-directives cmd)))
                        (cond
                          ((getf props :no-autoescape) :no-autoescape)

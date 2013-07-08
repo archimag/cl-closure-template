@@ -71,7 +71,7 @@
 ;;;; print
 
 (defmacro define-print-directive (name value)
-  `(define-rule ,name (and (? whitespace) "|" (? whitespace) ,value (? whitespace))
+  `(define-rule ,name ,value
      (:constant '(,(lispify-name value) t))))
 
 (define-print-directive no-autoescape-d "noAutoescape")
@@ -80,12 +80,19 @@
 (define-print-directive escape-uri-d "escapeUri")
 (define-print-directive escape-js-d "escapeJs")
 
-(define-rule insert-word-breaks-d (and (? whitespace) "|" (? whitespace) "insertWordBreaks:" decimal-integer (? whitespace))
-  (:destructure (w1 d w2 i value w3)
-    (declare (ignore w1 d w2 i w3))
+(define-rule insert-word-breaks-d (and "insertWordBreaks:" decimal-integer)
+  (:destructure (i value)
+    (declare (ignore i))
     (list :insert-word-breaks value)))
-  
-(define-rule print-directive (or no-autoescape-d id-d escape-html-d escape-uri-d escape-js-d insert-word-breaks-d))
+
+(define-rule all-print-directives (or no-autoescape-d id-d escape-html-d escape-uri-d escape-js-d insert-word-breaks-d))
+
+(defparameter +standard-print-directives+ '(no-autoescape-d id-d escape-html-d escape-uri-d escape-js-d insert-word-breaks-d))
+
+(define-rule print-directive (and (? whitespace ) "|" (? whitespace) all-print-directives (? whitespace))
+  (:destructure (w1 delim w2 directive w3)
+                (declare (ignore w1 delim w2 w3))
+                directive))
 
 (define-rule print-command (and (or "{print " "{")  expression (* print-directive) "}")
   (:destructure (start expr directives end)
@@ -99,6 +106,34 @@
   ((expr :initarg :expr :reader print-expression)
    (directives :initarg :directives :reader print-directives)))
 
+(defmacro define-print-syntax (symbol expr &body rule)
+  "Define a syntax rule for a new user print directive which is identified by
+SYMBOL. EXPR defines a grammar of the new directive without whitespace and the
+\"|\" delimiter. The body of definition should contain semantic rules used to
+convert possible parameters of the directive"
+  (alexandria:with-gensyms (rl-expr)
+    `(with-closure-template-rules
+       (when (member ',symbol +standard-print-directives+)
+         (error "Standard print directive syntax can't be redefined"))
+       (when (eq 'or ',symbol)
+         (error "Custom print directive syntax can't have symbol equal to the grammar operation"))
+       (let ((,rl-expr (rule-expression (find-rule 'all-print-directives))))
+         (when (member ',symbol ,rl-expr)
+           (setf ,rl-expr (remove ',symbol ,rl-expr))
+           (change-rule 'all-print-directives ,rl-expr)
+           (remove-rule ',symbol))
+         (define-rule ,symbol ,expr
+           (:around ()
+                    (list ',symbol (esrap:call-transform)))
+           ,@rule)
+         (change-rule 'all-print-directives (append ,rl-expr (list ',symbol)))
+         ',symbol))))
+
+(defun user-print-directive-p (symbol)
+  (with-closure-template-rules
+    (let ((expression (rule-expression (find-rule 'all-print-directives))))
+      (and (member symbol (rest expression)) (not (member symbol +standard-print-directives+))))))
+
 ;;; witch
 
 (define-rule with-variable (and whitespace  simple-name "=\"" expression #\")
@@ -108,7 +143,7 @@
                          :name (lispify-name var)
                          :jsname var)
           expr)))
-                   
+
 (define-rule with (and "{with" (+ with-variable) (? whitespace) "}" (? code-block) "{/with}")
   (:destructure (start vars w rb code end)
     (declare (ignore start w rb end))
@@ -212,11 +247,11 @@
                         (* whitespace) ")")
   (:destructure (start w1 lb args w2 rb)
     (declare (ignore start w1 lb w2 rb))
-    (cons :range    
+    (cons :range
           (remove nil
                   (cons (first args)
                         (mapcar #'second (cdr args)))))))
-        
+
 
 (define-rule for (and "{for" (+ whitespace) variable (+ whitespace) "in"
                       (+ whitespace) range (* whitespace) "}"
@@ -314,7 +349,7 @@
    (params :initarg :params :initform nil :reader call-params)))
 
 ;;; code-block
-        
+
 (define-rule code-block
     (+ (or substition
            literal
@@ -340,7 +375,7 @@
        (or (keywordp (car obj))
            (find (car obj)
                  '(- not + * / rem > < >= <= equal not-equal and or if)))))
-     
+
 (defun text-neighboring-strings (obj)
   (if (and (consp obj)
            (not (check-expression-p obj)))
@@ -405,7 +440,7 @@
   ((name :initarg :name :reader template-name)
    (properties :initarg :properties :reader template-properties)
    (code-block :initarg :code-block :reader template-code-block)))
-                
+
 ;;; namespace
 
 (define-rule namespace-name (and "{namespace" whitespace (and template-name (* (and #\. template-name))) (? whitespace) #\})
@@ -425,7 +460,7 @@
 (defclass namespace ()
   ((name :initarg :name :reader namespace-name)
    (templates :initarg :templates :reader namespace-templates)))
-  
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; parse-template
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

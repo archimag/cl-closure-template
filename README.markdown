@@ -147,3 +147,39 @@ hexadecimal values:
     #<Package "CLOSURE-TEMPLATE.EXAMPLE">
     CL-USER> (closure-template.example:hello-Name '(:name "Name" :param 128))
     "Hello Name 80!"
+
+To use Javascript backend, you need to register a handler for Javascript or
+RequireJS backends. This is a more complex example which shows how to handle
+parameters of the directive:
+
+    CL-USER> (closure-template:define-print-syntax printHex (and "hex" (esrap:? (and ":" (or "upperCase" "lowerCase"))))
+               (:destructure (tag value)
+                             (declare (ignore tag))
+                             (list (if (and value (string= (second value) "lowerCase")) 'case-lower 'case-upper))))
+    PRINT-HEX
+    CL-USER> (closure-template:register-print-handler :common-lisp-backend 'printHex
+                                                      :function #'(lambda (params env value)
+                                                                    (declare (ignore env))
+                                                                    (format nil (if (member 'case-lower params) "~(~X~)" "~X") value)))
+    PRINT-HEX
+    CL-USER> (closure-template:register-print-handler :javascript-backend 'printHex
+                                             :handler "function (params, value) { var result = value.toString(16); if (params.case == \"upper\") { result = result.toUpperCase(); } return result; }"
+                                             :parameter-converter #'(lambda (params)
+                                                                      (format nil "{ case: \"~A\"; }" (if (member 'case-lower params) "lower" "upper"))))
+    
+    PRINTHEX
+    CL-USER> (defparameter *template* "
+         /*
+          *  Greets a person using 'Hello' by default.
+          */
+        {namespace closureTemplate.Example}
+        {template helloName}
+        Hello {$name} {$param|hex:lower}!
+        {/template}")
+    *TEMPLATE*
+    CL-USER> (closure-template.example:hello-name '(name "Name" :param 143))
+    "Hello Name 8F!"
+
+You can also use a predefined function by name or RequireJS module. 
+For detals, please see docstrings for REGISTER-PRINT-HANDLER implementations.
+

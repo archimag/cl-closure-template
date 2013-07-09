@@ -130,7 +130,7 @@ Adding Custom Print Directives
 You can add custom print directives. For example, printing integers as
 hexadecimal values:
 
-    CL-USER> (closure-template:define-print-syntax printHex "hex" :constant t) 
+    CL-USER> (closure-template:define-print-syntax printHex "hex" (:constant t)) 
     CLOSURE-TEMPLATE.PARSER::PRINT-DIRECTIVE
     CL-USER> (closure-template:register-print-handler :common-lisp-backend 'printHex :function #'(lambda (params end value) (format nil "~X" value)))
     #<Anonymous Function #x302001B7085F>
@@ -152,10 +152,10 @@ To use Javascript backend, you need to register a handler for Javascript or
 RequireJS backends. This is a more complex example which shows how to handle
 parameters of the directive:
 
-    CL-USER> (closure-template:define-print-syntax printHex (and "hex" (esrap:? (and ":" (or "upperCase" "lowerCase"))))
+    CL-USER> (closure-template:define-print-syntax printHex (and "hex" (esrap:? (and ":" (or "upper" "lower"))))
                (:destructure (tag value)
                              (declare (ignore tag))
-                             (list (if (and value (string= (second value) "lowerCase")) 'case-lower 'case-upper))))
+                             (list (if (and value (string= (second value) "lower")) 'case-lower 'case-upper))))
     PRINT-HEX
     CL-USER> (closure-template:register-print-handler :common-lisp-backend 'printHex
                                                       :function #'(lambda (params env value)

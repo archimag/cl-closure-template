@@ -79,8 +79,8 @@
 (restas:define-route messages.js ("messages.js")
   (merge-pathnames "messages.js" *dir*))
 
-(restas:define-route templates.js ("templates.js"
-                                   :content-type "text/javascript")
+(restas:define-route templates.js ("templates.js")
+  (:content-type "text/javascript")
   *js-templates*)
 
 (restas:define-route jquery ("jquery/jquery:(str).js")
@@ -88,24 +88,23 @@
                    *jquery-dir*))
 
 
-(restas:define-route all-messages ("/"
-                                   :render-method 'messages:show-all-messages)
+(restas:define-route all-messages ("/")
+  (:render-method 'messages:show-all-messages)
   (list :messages
         (loop for msg in *messages*
            collect (message-with-href msg))))
 
-(restas:define-route create-message ("/"
-                                     :method :post
-                                     :content-type "text/javascript"
-                                     :render-method #'json:encode-json-plist-to-string)
+(restas:define-route create-message ("/" :method :post)
+  (:content-type "text/javascript")
+  (:render-method #'json:encode-json-plist-to-string)
   (message-with-href (make-message (hunchentoot:post-parameter "author")
                                    (hunchentoot:post-parameter "title")
                                    (hunchentoot:post-parameter "message"))))
 
 
-(restas:define-route message-detail ("messages/:id"
-                                     :content-type "text/javascript"
-                                     :render-method #'json:encode-json-plist-to-string )
+(restas:define-route message-detail ("messages/:id")
+  (:content-type "text/javascript")
+  (:render-method #'json:encode-json-plist-to-string)
   (or (find (parse-integer id)
             *messages*
             :key #'message-id)

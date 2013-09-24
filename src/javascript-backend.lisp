@@ -73,7 +73,7 @@
 (defgeneric write-expression (expr out)
   (:documentation "Write expression as JavaScript")
   (:method ((expr string) out)
-    (format out "~S" (%js expr)))
+    (format out "\"~a\"" (%js expr)))
   (:method ((expr integer) out)
     (format out "~d" expr))
   (:method ((expr real) out)

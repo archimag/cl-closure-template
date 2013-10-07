@@ -78,6 +78,8 @@
     (format out "~d" expr))
   (:method ((expr real) out)
     (format out "~f" expr))
+  (:method ((expr (eql :t)) out)
+    (format out "true"))
   (:method (expr (out (eql nil)))
     (with-output-to-string (stream)
       (write-expression expr stream))))

@@ -614,8 +614,9 @@ specified"
               (write-indent out)
               (write-line "var $result$ = [];" out)
 
-              (write-command (third param) out)
-
+              (iter (for item in (cddr param))
+                    (write-command item out))
+              
               (write-indent out)
               (write-line "return $result$.join('');" out))
 

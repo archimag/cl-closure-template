@@ -13,9 +13,7 @@
 	    <head>
       	    <meta http-equiv="Content-Type" content="text/html; charset={$charset ? $charset : 'utf-8'}" />
 
-            {if $title}
-                <title>{$title}</title>
-            {/if}
+            <title>{$title}</title>
 
             {foreach $item in $css}
                 <link href="{$item}" rel="stylesheet" type="text/css" />

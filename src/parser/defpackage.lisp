@@ -7,7 +7,8 @@
 
 (defpackage #:closure-template.parser
   (:use #:cl #:iter #:esrap)
-  (:export #:parse-template
+  (:export #:*uglify*
+           #:parse-template
            #:parse-expression
            #:closure-template-parse
            ;; utils
@@ -113,5 +114,10 @@
 (defun not-equal (obj1 obj2)
   (not (equal obj1 obj2)))
 
+(defparameter *uglify* t)
+
 (define-rule whitespace (+ (or #\space #\tab #\newline))
-  (:constant " "))
+  (:destructure (&rest wsp)
+    (if *uglify*
+        " "
+        (apply #'concatenate 'string wsp))))

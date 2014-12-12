@@ -8,7 +8,9 @@
 (defpackage #:closure-template
   (:use #:cl #:iter #:alexandria #:closure-template.parser)
   ;;(:import-from #:closure-template.parser #:parse-template  #:parse-expression #:not-equal #:lispify-string)
-  (:export #:parse-template
+  (:import-from #:closure-template.parser #:*uglify*)
+  (:export #:*uglify*
+           #:parse-template
            #:parse-expression
 
            ;; compile

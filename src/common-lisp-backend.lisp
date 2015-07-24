@@ -64,7 +64,7 @@
 
 (defun ensure-ttable-package (name &key prototype)
   (or (find-package name)
-      (let* ((package (make-package name))
+      (let* ((package (make-package name :use '()))
              (package-ttable (ensure-symbol "*PACKAGE-TTABLE*" package)))
         (setf (symbol-value package-ttable)
               (make-instance 'ttable :prototype prototype))
